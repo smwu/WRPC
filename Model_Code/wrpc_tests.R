@@ -8,6 +8,7 @@ library(tidyverse)
 library(ggpubr)
 library(gtools)
 library(testthat)
+library(sfsmisc)  # mult.fig
 
 wd <- "~/Documents/Github/WRPC/"
 code_dir <- "Code/"
