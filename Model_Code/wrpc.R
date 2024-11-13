@@ -105,7 +105,7 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
     M <- dim(MCMC_out$pi_MCMC)[1]  # Number of stored MCMC iterations
     K_MCMC <- rowSums(MCMC_out$pi_MCMC >= class_cutoff_global)
     # Number of classes for the fixed sampler
-    K_fixed <- round(stats::median(K_MCMC))
+    K_fixed <- round(stats::median(K_MCMC, na.rm = TRUE))
     print(paste0("K_fixed: ", K_fixed))
     
     ### Create adaptive output list (fixed sampler replaces this if run)
@@ -197,25 +197,25 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
     ### Create output list. Replaces adaptive sampler output list
     res <- list(estimates = estimates, MCMC_out = MCMC_out,
                 post_MCMC_out = post_MCMC_out, K_fixed = K_fixed)
+    
+    # Store data variables used
+    data_vars <- list(n = n, J = J, R_j = R_j, R = R, H = H, w_all = w_all, 
+                      sampling_wt = sampling_wt, x_mat = x_mat,
+                      stratum_id = stratum_id, cluster_id = cluster_id)
+    res$data_vars <- data_vars
+    
+    class(res) <- "wrpc"
+    
+    # Save output
+    if (save_res) {
+      save(res, file = paste0(save_path, "_wrpc_results.RData"))
+    }
   }
   
   #================= Save and return output ====================================
   # Stop runtime tracker
   runtime <- Sys.time() - start_time
   res$runtime <- runtime
-  
-  # Store data variables used
-  data_vars <- list(n = n, J = J, R_j = R_j, R = R, H = H, w_all = w_all, 
-                    sampling_wt = sampling_wt, x_mat = x_mat,
-                    stratum_id = stratum_id, cluster_id = cluster_id)
-  res$data_vars <- data_vars
-  
-  class(res) <- "wrpc"
-  
-  # Save output
-  if (save_res) {
-    save(res, file = paste0(save_path, "_wrpc_results.RData"))
-  }
   
   # Return output
   return(res)

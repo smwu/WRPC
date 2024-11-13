@@ -11,7 +11,7 @@ library(naniar)     # missingness
 library(sfsmisc)    # mult.fig
 
 wd <- "~/Documents/Github/WRPC/"
-code_dir <- "Code/"
+code_dir <- "Model_Code/"
 data_dir <- "Application/HCHS_Data/"
 res_dir <- "Results/"
 

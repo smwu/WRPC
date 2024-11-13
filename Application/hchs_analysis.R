@@ -13,6 +13,7 @@ library(naniar)     # missingness
 library(sfsmisc)    # mult.fig
 
 wd <- "~/Documents/Github/WRPC/"
+wd <- "/n/holyscratch01/stephenson_lab/Users/stephwu18/WRPC/"
 code_dir <- "Model_Code/"
 data_dir <- "Application/HCHS_Data/"
 res_dir <- "Results/"
@@ -170,12 +171,14 @@ for (k in 1:K) {
 }
 
 #=============== Comparing confounder and cardiometabolic risk groups ==========
-load(paste0(wd, res_dir, "conf_sup_swolca_results.RData"))
-res_conf_sup <- res
-res_conf_sup <- reorder_classes(res = res_conf_sup, new_order = c(2, 1, 3))
-load(paste0(wd, res_dir, "cmd_sup_no_ckd_swolca_results.RData"))
-res_cmd_sup <- res
-res_cmd_sup <- reorder_classes(res = res_cmd_sup, new_order = c(2, 3, 1, 4))
+# load(paste0(wd, res_dir, "conf_sup_swolca_results.RData"))
+# res_conf_sup <- res
+# res_conf_sup <- reorder_classes(res = res_conf_sup, new_order = c(2, 1, 3))
+# load(paste0(wd, res_dir, "cmd_sup_no_ckd_swolca_results.RData"))
+# res_cmd_sup <- res
+# res_cmd_sup <- reorder_classes(res = res_cmd_sup, new_order = c(2, 3, 1, 4))
+# study_data_dropna <- read.csv(paste0(wd, data_dir, "cleaned_data.csv"))
+
 
 # Look at grid of confounder and cardiometabolic risk factors
 table(res_conf_sup$estimates$c_all, res_cmd_sup$estimates$c_all, useNA = "always")
@@ -249,12 +252,161 @@ sampling_wt <- c(as.numeric(study_data_dropna$WEIGHT_FINAL_EXPANDED))
 h_all <- c(as.numeric(study_data_dropna$subgroup))
 
 seed <- 1
-res_cmd_sup <- wrpc(x_mat = x_mat, h_all = h_all, 
-                    sampling_wt = sampling_wt, cluster_id = cluster_id, 
-                    stratum_id = stratum_id, run_sampler = "both", K_max = 30, 
-                    adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
-                    burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
-                    save_path = paste0(wd, res_dir, "HCHS_PR_CVD"))
+res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all, 
+                sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
+                adapt_seed = seed, class_cutoff = 0.05, n_runs = 10000, 
+                burn = 5000, thin = 5, update = 1000, save_res = TRUE, 
+                save_path = paste0(wd, res_dir, "HCHS_PR_CVD_10000"))
+res_wrpc$runtime  # 3.5 hours
+res_wrpc$estimates$pi_med
+mean(apply(res_wrpc$estimates$pred_global_class_probs, 1, max))
+
+plot(res_wrpc$MCMC_out$pi_MCMC[, 1], type = "l")
+plot(res_wrpc$MCMC_out$theta_global_MCMC[, 1, 1, 1], type = "l")
+plot(res_wrpc$MCMC_out$theta_local_MCMC[, 1, 1, 4], type = "l")
+plot(res_wrpc$MCMC_out$nu_MCMC[, 1, 1], type = "l")
+hist(round(res_wrpc$estimates$nu_med, 2), breaks=30)
+# Which foods are local
+which(res_wrpc$estimates$nu_med < 0.3, arr.ind = TRUE)
+plot(res_wrpc$MCMC_out$nu_MCMC[, 12, 1], type = "l")
+plot(res_wrpc$MCMC_out$nu_MCMC[, 2, 6], type = "l")
+plot(res_wrpc$MCMC_out$nu_MCMC[, 3, 13], type = "l")
+
+
+# Try running fixed sampler with K=6 and alpha=1
+seed <- 1
+res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all, 
+                sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                stratum_id = stratum_id, run_sampler = "fixed", K_fixed = 6, 
+                fixed_seed = seed, alpha_fixed = 1, 
+                class_cutoff_global = 0.05, n_runs = 10000, 
+                burn = 5000, thin = 5, update = 1000, save_res = TRUE, 
+                save_path = paste0(wd, res_dir, "HCHS_PR_CVD"))
+res_wrpc$runtime  # 2.2 hours
+res_wrpc$estimates$pi_med  # 2 classes
+res_wrpc$post_MCMC_out$K_med
+plot(res_wrpc$post_MCMC_out$dendrogram_global)
+mean(apply(res_wrpc$estimates$pred_global_class_probs, 1, max))
+plot(res_wrpc$MCMC_out$pi_MCMC[, 1], type = "l")
+plot(res_wrpc$post_MCMC_out$pi[, 1], type = "l")
+boxplot(res_wrpc$post_MCMC_out$pi[, 1], ylim=c(0,1))
+plot(res_wrpc$MCMC_out$theta_global_MCMC[, 1, 1, 1], type = "l")
+plot(res_wrpc$post_MCMC_out$theta_global[, 1, 1, 1], type = "l")
+plot(res_wrpc$MCMC_out$theta_local_MCMC[, 1, 1, 4], type = "l")
+plot(res_wrpc$MCMC_out$nu_MCMC[, 1, 1], type = "l")
+hist(round(res_wrpc$estimates$nu_med, 2), breaks=30)
+# Which foods are local
+which(res_wrpc$estimates$nu_med < 0.3, arr.ind = TRUE)
+plot(res_wrpc$MCMC_out$nu_MCMC[, 2, 6], type = "l")
+plot(res_wrpc$MCMC_out$nu_MCMC[, 3, 13], type = "l")
+
+
+# Try running fixed sampler with K=6 and alpha=1 and no permutation sampler
+seed <- 1
+res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all, 
+                 sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                 stratum_id = stratum_id, run_sampler = "fixed", K_fixed = 6, 
+                 fixed_seed = seed, alpha_fixed = 1, 
+                 class_cutoff_global = 0.05, n_runs = 1000, 
+                 burn = 500, thin = 5, update = 100, switch = 2000, 
+                 save_res = TRUE, 
+                 save_path = paste0(wd, res_dir, "HCHS_PR_CVD_noswitch"))
+res_wrpc$runtime  # 15 mins
+res_wrpc$estimates$pi_med  # 3 classes
+res_wrpc$post_MCMC_out$K_med
+plot(res_wrpc$post_MCMC_out$dendrogram_global)
+mean(apply(res_wrpc$estimates$pred_global_class_probs, 1, max))
+plot(res_wrpc$MCMC_out$pi_MCMC[, 1], type = "l")
+plot(res_wrpc$post_MCMC_out$pi[, 1], type = "l")
+boxplot(res_wrpc$post_MCMC_out$pi[, 1], ylim=c(0,1))
+
+# Try running fixed sampler with K=6 and alpha=1 and 1 permutation sampler switch
+seed <- 1
+res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all, 
+                 sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                 stratum_id = stratum_id, run_sampler = "fixed", K_fixed = 6, 
+                 fixed_seed = seed, alpha_fixed = 1, 
+                 class_cutoff_global = 0.05, n_runs = 2000, 
+                 burn = 1000, thin = 1, update = 100, switch = 1000, 
+                 save_res = TRUE, 
+                 save_path = paste0(wd, res_dir, "HCHS_PR_CVD_1switch"))
+res_wrpc$runtime  # 35 mins
+res_wrpc$estimates$pi_med  # 2 classes
+res_wrpc$post_MCMC_out$K_med
+plot(res_wrpc$post_MCMC_out$dendrogram_global)
+mean(apply(res_wrpc$estimates$pred_global_class_probs, 1, max))
+plot(res_wrpc$MCMC_out$pi_MCMC[, 1], type = "l")
+plot(res_wrpc$post_MCMC_out$pi[, 1], type = "l")
+boxplot(res_wrpc$post_MCMC_out$pi[, 1], ylim=c(0,1))
+plot(res_wrpc$MCMC_out$theta_local_MCMC[, 1, 1, 4], type = "l")
+plot(res_wrpc$MCMC_out$nu_MCMC[, 1, 1], type = "l")
+hist(round(res_wrpc$estimates$nu_med, 2), breaks=30)
+
+
+# Try running fixed sampler with K=6 and alpha=1 and 1 permutation sampler switch
+seed <- 1
+res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all, 
+                 sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                 stratum_id = stratum_id, run_sampler = "fixed", K_fixed = 6, 
+                 fixed_seed = seed, alpha_fixed = 1, 
+                 class_cutoff_global = 0.05, n_runs = 2000, 
+                 burn = 1000, thin = 1, update = 100, switch = 1000, 
+                 save_res = TRUE, 
+                 save_path = paste0(wd, res_dir, "HCHS_PR_CVD_1switch"))
+res_wrpc$runtime  # 35 mins
+res_wrpc$estimates$pi_med  # 2 classes
+res_wrpc$post_MCMC_out$K_med
+plot(res_wrpc$post_MCMC_out$dendrogram_global)
+mean(apply(res_wrpc$estimates$pred_global_class_probs, 1, max))
+plot(res_wrpc$MCMC_out$pi_MCMC[, 1], type = "l")
+plot(res_wrpc$post_MCMC_out$pi[, 1], type = "l")
+boxplot(res_wrpc$post_MCMC_out$pi[, 1], ylim=c(0,1))
+plot(res_wrpc$MCMC_out$theta_local_MCMC[, 1, 1, 4], type = "l")
+plot(res_wrpc$MCMC_out$nu_MCMC[, 1, 1], type = "l")
+hist(round(res_wrpc$estimates$nu_med, 2), breaks=30)
+
+
+# Try running adaptive sampler with thinning 3 and switching every 100
+seed <- 1
+res_adapt <- wrpc(x_mat = x_mat, h_all = h_all, 
+                 sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                 stratum_id = stratum_id, run_sampler = "adapt", K_max=20, 
+                 adapt_seed = seed,  
+                 class_cutoff_global = 0.05, n_runs = 5000, 
+                 burn = 2500, thin = 3, update = 100, switch = 100, 
+                 save_res = TRUE, 
+                 save_path = paste0(wd, res_dir, "HCHS_PR_CVD_thin3"))
+res_adapt$runtime
+summary(res_adapt$K_MCMC)
+hist(res_adapt$K_MCMC)
+plot(res_adapt$MCMC_out$pi_MCMC[, 1], type = "l")
+plot(res_adapt$MCMC_out$theta_global_MCMC[, 1, 1, 1], type = "l")
+plot(res_adapt$MCMC_out$nu_MCMC[, 1, 6], type = "l")
+
+
+# Try running fixed sampler with K=4, alpha=1, thinning 3 and switching every 100
+seed <- 1
+res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all, 
+                 sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                 stratum_id = stratum_id, run_sampler = "fixed", K_fixed = 4, 
+                 fixed_seed = seed, alpha_fixed = 1, 
+                 class_cutoff_global = 0.05, n_runs = 5000, 
+                 burn = 2500, thin = 3, update = 100, switch = 100, 
+                 save_res = TRUE, 
+                 save_path = paste0(wd, res_dir, "HCHS_PR_CVD_thin3"))
+res_wrpc$runtime  # 35 mins
+res_wrpc$estimates$pi_med  # 2 classes
+res_wrpc$post_MCMC_out$K_med
+plot(res_wrpc$post_MCMC_out$dendrogram_global)
+mean(apply(res_wrpc$estimates$pred_global_class_probs, 1, max))
+plot(res_wrpc$MCMC_out$pi_MCMC[, 1], type = "l")
+plot(res_wrpc$post_MCMC_out$pi[, 1], type = "l")
+boxplot(res_wrpc$post_MCMC_out$pi[, 1], ylim=c(0,1))
+plot(res_wrpc$MCMC_out$theta_local_MCMC[, 1, 1, 4], type = "l")
+plot(res_wrpc$MCMC_out$nu_MCMC[, 1, 1], type = "l")
+hist(round(res_wrpc$estimates$nu_med, 2), breaks=30)
+
 
 
 # # Try version with 4 confounder groups
