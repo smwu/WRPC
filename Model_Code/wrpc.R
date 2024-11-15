@@ -181,6 +181,11 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
                                    eta_local = eta_local_fixed, 
                                    n_runs = n_runs, burn = burn, thin = thin, 
                                    update = update, switch = switch)
+    
+    # Save output
+    if (save_res) {
+      save(MCMC_out, file = paste0(save_path, "_wrpc_MCMC_out.RData"))
+    }
     ### Post-processing to recalibrate labels and remove extraneous empty classes
     # Obtain K_med, pi, theta_global, theta_local, dendrogram_global
     post_MCMC_out <- post_process_WRPC(MCMC_out = MCMC_out, J = J, R = R, H = H, 

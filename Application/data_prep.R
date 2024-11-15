@@ -749,7 +749,42 @@ reorder_classes <- function (res, new_order) {
 }
 
 
-
+plot_class_dist <- function (res, class_labels = NULL, class_title = "Dietary Pattern", 
+          y_title = "Class Membership Probability", ...) 
+{
+  if (!(class(res) %in% c("swolca", "wolca"))) {
+    stop("res must be an object of class `swolca` or `wolca`, resulting \n         from a call to one of these functions")
+  }
+  ### CHANGED
+  if (!is.null(res$estimates_adjust)) {
+    pi_red <- as.data.frame(res$estimates_adjust$pi_red)
+  }
+  ### END CHANGED
+  else {
+    pi_red <- as.data.frame(res$estimates$pi_red)
+  }
+  K <- dim(pi_red)[2]
+  if (is.null(class_labels)) {
+    class_labels <- 1:K
+  }
+  else if (length(class_labels) != K) {
+    stop(paste0("length of class_labels must equal the number of latent classes, K = ", 
+                K))
+  }
+  colnames(pi_red) <- class_labels
+  pi_red_plot <- pi_red %>% tidyr::pivot_longer(cols = tidyselect::everything(), 
+                                                names_to = "pi_comp", values_to = "value")
+  pi_comp <- value <- NULL
+  pi_red_plot %>% ggplot2::ggplot(ggplot2::aes(x = pi_comp, 
+                                               y = value)) + ggplot2::theme_bw() + ggplot2::scale_fill_brewer(palette = "Set2") + 
+    ggplot2::geom_boxplot() + ggplot2::labs(x = class_title, 
+                                            y = y_title) + ggplot2::theme(text = ggplot2::element_text(size = 15), 
+                                                                          axis.text.x = ggplot2::element_text(size = 12, color = "black"), 
+                                                                          axis.text.y = ggplot2::element_text(size = 11, color = "black"), 
+                                                                          axis.title.x = ggplot2::element_text(size = 13, color = "black", 
+                                                                                                               face = "bold"), axis.title.y = ggplot2::element_text(size = 13, 
+                                                                                                                                                                    color = "black", face = "bold"))
+}
 #================ OLD CODE =====================================================
 # # Exploration of dataset variables
 # # Large population centers: 
