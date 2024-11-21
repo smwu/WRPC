@@ -11,6 +11,7 @@ library(naniar)     # missingness
 library(sfsmisc)    # mult.fig
 
 wd <- "~/Documents/Github/WRPC/"
+wd <- "/n/holyscratch01/stephenson_lab/Users/stephwu18/WRPC/"
 code_dir <- "Model_Code/"
 data_dir <- "Application/HCHS_Data/"
 res_dir <- "Results/"
@@ -447,6 +448,9 @@ convert_to_probs <- function (est_xi, glm_form, V_data, cov_name = NULL) {
   } else { # Case with additional covariates
     cov_names <- labels(stats::terms(stats::as.formula(glm_form)))
     oth_names <- cov_names[cov_names != cov_name]
+    if (!is.factor(V_data[[cov_name]])) { # factor
+      stop("Please convert V_data cov_name data type to factor")
+    } else {
     cov_levels <- lapply(cov_name, function(x) levels(V_data[[x]]))
     num_cov_levels <- nrow(expand.grid(cov_levels))
     oth_levels <- lapply(oth_names, function(x) levels(V_data[[x]]))
@@ -462,6 +466,7 @@ convert_to_probs <- function (est_xi, glm_form, V_data, cov_name = NULL) {
                                                            1:length(cov_name))
     Phi_df <- cbind(all_Phi_df, all_level_comb)
     Phi_df <- Phi_df[1:num_cov_levels, ]
+    }
   }
   ### END CHANGED
   
@@ -728,22 +733,21 @@ reorder_classes <- function (res, new_order) {
       res_new$estimates_adjust$xi_med <- res$estimates_adjust$xi_med[new_order, , drop = FALSE]
     }
   }
-  else {
-    res_new$estimates$pi_red <- res$estimates$pi_red[, new_order, drop = FALSE]
-    res_new$estimates$theta_red <- res$estimates$theta_red[, 
-                                                           , new_order, , drop = FALSE]
-    res_new$estimates$pi_med <- res$estimates$pi_med[new_order, drop = FALSE]
-    res_new$estimates$theta_med <- res$estimates$theta_med[, 
-                                                           new_order, , drop = FALSE]
-    for (i in 1:5) {
-      res_new$estimates$c_all[res$estimates$c_all == new_order[i]] <- i
-    }
-    if (is(res, "swolca")) {
-      res_new$estimates$xi_red <- res$estimates$xi_red[, 
-                                                       new_order, , drop = FALSE]
-      res_new$estimates$xi_med <- res$estimates$xi_med[new_order, , drop = FALSE]
-      ### END CHANGED
-    }
+  ### CHANGED
+  res_new$estimates$pi_red <- res$estimates$pi_red[, new_order, drop = FALSE]
+  res_new$estimates$theta_red <- res$estimates$theta_red[, 
+                                                         , new_order, , drop = FALSE]
+  res_new$estimates$pi_med <- res$estimates$pi_med[new_order, drop = FALSE]
+  res_new$estimates$theta_med <- res$estimates$theta_med[, 
+                                                         new_order, , drop = FALSE]
+  for (i in 1:5) {
+    res_new$estimates$c_all[res$estimates$c_all == new_order[i]] <- i
+  }
+  if (is(res, "swolca")) {
+    res_new$estimates$xi_red <- res$estimates$xi_red[, 
+                                                     new_order, , drop = FALSE]
+    res_new$estimates$xi_med <- res$estimates$xi_med[new_order, , drop = FALSE]
+    ### END CHANGED
   }
   return(res_new)
 }
@@ -785,6 +789,59 @@ plot_class_dist <- function (res, class_labels = NULL, class_title = "Dietary Pa
                                                                                                                face = "bold"), axis.title.y = ggplot2::element_text(size = 13, 
                                                                                                                                                                     color = "black", face = "bold"))
 }
+
+plot_regr_coefs <- function (regr_coefs, res, cov_labels = NULL, ...) {
+  ### CHANGED
+  if (!(class(res) %in% c("swolca", "wolca"))) {
+    stop(paste0("res must be an object of class `swolca` or `wolca`, resulting ",
+    "from a call to one of these functions"))
+  }
+  if (regr_coefs$Covariate[2] != "c_all2") {
+    stop(paste0("regr_coefs must have latent class covariates with names of the ",
+    "form `c_allk`, where k ranges from 2 to the total number of classes"))
+  }
+  if (is.null(cov_labels)) {
+    cov_labels <- levels(factor(regr_coefs$Covariate, 
+                                levels = regr_coefs$Covariate))
+  }
+  else {
+    if ((length(cov_labels) != length(regr_coefs$Covariate)) | 
+        !is.character(cov_labels)) {
+      stop(paste0("cov_labels must be a string vector that has the same values as ",
+                  "`regr_coefs$Covariate` and is of the same length"))
+    } else if (length(setdiff(cov_labels, regr_coefs$Covariate))) {
+      stop(paste0("cov_labels must be a string vector that has the same values as  ",
+                  "`regr_coefs$Covariate` and is of the same length"))
+    }
+  }
+  ### END CHANGED
+  if (!is.null(res$estimates_adjust)) {
+    K <- length(res$estimates_adjust$pi_med)
+  }
+  else {
+    K <- length(res$estimates$pi_med)
+  }
+  plot_df <- regr_coefs
+  plot_df$Class <- 1
+  for (k in 1:K) {
+    class_str <- paste0("c_all", k)
+    plot_df$Class[grepl(class_str, plot_df$Covariate)] <- k
+  }
+  plot_df$Class <- as.factor(plot_df$Class)
+  ### CHANGED
+  plot_df$Covariate <- factor(plot_df$Covariate, levels = cov_labels, 
+                              labels = cov_labels)
+  ### END CHANGED
+  Class <- Covariate <- Estimate <- LB <- UB <- NULL
+  plot_df %>% ggplot2::ggplot(ggplot2::aes(x = Covariate, 
+                                           y = Estimate, col = Class)) + ggplot2::theme_bw() + 
+    ggplot2::geom_point() + ggplot2::scale_color_brewer(palette = "Set2", 
+                                                        labels = Class, aesthetics = c("color")) + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 70, 
+                                                                                                                                                      vjust = 1, hjust = 1)) + ggplot2::geom_hline(yintercept = 0, 
+                                                                                                                                                                                                   linetype = "dashed") + ggplot2::geom_errorbar(ggplot2::aes(ymin = LB, 
+                                                                                                                                                                                                                                                              ymax = UB, color = Class, width = 0.2))
+}
+
 #================ OLD CODE =====================================================
 # # Exploration of dataset variables
 # # Large population centers: 

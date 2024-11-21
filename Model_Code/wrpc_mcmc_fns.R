@@ -67,7 +67,7 @@ run_MCMC_WRPC <- function(RPC_params, n, K, H, J, R, w_all, h_all, x_mat, g_mat,
                          update, switch) {
   
   # Number of MCMC iterations to store
-  n_storage <- ceiling(n_runs / thin) 
+  n_storage <- floor(n_runs / thin) 
   
   # Initialize variables
   nu_MCMC <- array(NA, dim = c(n_storage, H, J))
@@ -209,14 +209,14 @@ run_MCMC_WRPC <- function(RPC_params, n, K, H, J, R, w_all, h_all, x_mat, g_mat,
   }
   
   # Discard burn-in
-  warmup <- ceiling(burn / thin)
+  warmup <- floor(burn / thin)
   if (warmup > 0) {
-    nu_MCMC <- nu_MCMC[-(1:warmup), , ]
-    pi_MCMC <- pi_MCMC[-(1:warmup), ]
-    theta_global_MCMC <- theta_global_MCMC[-(1:warmup), , , ]
-    theta_local_MCMC <- theta_local_MCMC[-(1:warmup), , , ]
+    nu_MCMC <- nu_MCMC[-(1:warmup), , , drop = FALSE]
+    pi_MCMC <- pi_MCMC[-(1:warmup), , drop = FALSE]
+    theta_global_MCMC <- theta_global_MCMC[-(1:warmup), , , , drop = FALSE]
+    theta_local_MCMC <- theta_local_MCMC[-(1:warmup), , , , drop = FALSE]
     c_all_MCMC <- c_all_MCMC[-(1:warmup), ]
-    g_mat_MCMC <- g_mat_MCMC[-(1:warmup), , ]
+    g_mat_MCMC <- g_mat_MCMC[-(1:warmup), , , drop = FALSE]
   }
   
   # Return samples
@@ -233,7 +233,7 @@ run_MCMC_Rcpp_WRPC <- function(RPC_params, n, K, H, J, R, w_all, h_all, x_mat,
                                burn, thin, update, switch) {
   
   # Number of MCMC iterations to store
-  n_storage <- ceiling(n_runs / thin) 
+  n_storage <- floor(n_runs / thin) 
   
   # Initialize variables
   nu_MCMC <- array(NA, dim = c(n_storage, H, J))
@@ -314,14 +314,14 @@ run_MCMC_Rcpp_WRPC <- function(RPC_params, n, K, H, J, R, w_all, h_all, x_mat,
   }
   
   # Discard burn-in
-  warmup <- ceiling(burn / thin)
+  warmup <- floor(burn / thin)
   if (warmup > 0) {
-    nu_MCMC <- nu_MCMC[-(1:warmup), , ]
-    pi_MCMC <- pi_MCMC[-(1:warmup), ]
-    theta_global_MCMC <- theta_global_MCMC[-(1:warmup), , , ]
-    theta_local_MCMC <- theta_local_MCMC[-(1:warmup), , , ]
+    nu_MCMC <- nu_MCMC[-(1:warmup), , , drop = FALSE]
+    pi_MCMC <- pi_MCMC[-(1:warmup), , drop = FALSE]
+    theta_global_MCMC <- theta_global_MCMC[-(1:warmup), , , , drop = FALSE]
+    theta_local_MCMC <- theta_local_MCMC[-(1:warmup), , , , drop = FALSE]
     c_all_MCMC <- c_all_MCMC[-(1:warmup), ]
-    g_mat_MCMC <- g_mat_MCMC[-(1:warmup), , ]
+    g_mat_MCMC <- g_mat_MCMC[-(1:warmup), , , drop = FALSE]
   }
   
   # Return samples

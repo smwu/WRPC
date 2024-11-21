@@ -205,7 +205,7 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
     
     # Store data variables used
     data_vars <- list(n = n, J = J, R_j = R_j, R = R, H = H, w_all = w_all, 
-                      sampling_wt = sampling_wt, x_mat = x_mat,
+                      sampling_wt = sampling_wt, x_mat = x_mat, h_all = h_all,
                       stratum_id = stratum_id, cluster_id = cluster_id)
     res$data_vars <- data_vars
     
