@@ -342,6 +342,75 @@ res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all,
 res_wrpc$runtime # 1.5 hours, K = 4
 
 
+#================== Puerto Rican, INCOME-NATIVITY-AGE AMONG WOMEN ==============
+
+# Subset to Puerto Rican background and women: n = 1258
+study_data <- comb_data %>%
+  filter(BKGRD1_C6 %in% c(4) & GENDER == 2)
+
+# Exploratory proportions
+# Income: 1= <30k, 2 = >=30k
+# US_BORN: 0=no, 1=yes (born in 50 US states/continental)
+# Age: 1=18-44, 2=45+
+table(study_data$INCOME_C2, study_data$AGEGROUP_C2)
+table(study_data$INCOME_C2, study_data$US_BORN) 
+
+### Create subgroup based on income, nativity, gender, age
+subgroup_labels <- 
+  c("incL-nonUS-F-young", "incL-nonUS-F-old", "incL-US-F-young", "incL-US-F-old",
+    "incH-nonUS-F-young", "incH-nonUS-F-old", "incH-US-F-young", "incH-US-F-old")
+study_data <- study_data %>%
+  mutate(subgroup_income_nativity_age = case_when(
+    INCOME_C2 == 1 & US_BORN == 0 & AGEGROUP_C2 == 1 ~ 1,  # incL-nonUS-F-young
+    INCOME_C2 == 1 & US_BORN == 0 & AGEGROUP_C2 == 2 ~ 2,  # incL-nonUS-F-old
+    INCOME_C2 == 1 & US_BORN == 1 & AGEGROUP_C2 == 1 ~ 3,  # incL-US-F-young
+    INCOME_C2 == 1 & US_BORN == 1 & AGEGROUP_C2 == 2 ~ 4,  # incL-US-F-old
+    INCOME_C2 == 2 & US_BORN == 0 & AGEGROUP_C2 == 1 ~ 5, # incH-nonUS-F-young
+    INCOME_C2 == 2 & US_BORN == 0 & AGEGROUP_C2 == 2 ~ 6, # incH-nonUS-F-old
+    INCOME_C2 == 2 & US_BORN == 1 & AGEGROUP_C2 == 1 ~ 7, # incH-US-F-young
+    INCOME_C2 == 2 & US_BORN == 1 & AGEGROUP_C2 == 2 ~ 8, # incH-US-F-old
+    .default = NA
+  ))
+table(study_data$subgroup_income_nativity_age)
+
+# Check missingness
+# Note: FPQ is already subsetted to complete cases
+naniar::gg_miss_var(study_data %>% 
+                      select(ID, STRAT, PSU_ID, WEIGHT_FINAL_EXPANDED, 
+                             INCOME_C2, US_BORN, GENDER, AGEGROUP_C2, 
+                             subgroup_income_nativity_age))
+
+# Drop NAs
+# Sample size after dropping all missingness: n = 1150
+study_data_dropna <- study_data %>% 
+  select(ID, STRAT, PSU_ID, WEIGHT_FINAL_EXPANDED, 
+         subgroup_income_nativity_age, citrus_juice:soup_oth) %>% 
+  drop_na()
+
+
+### Run WRPC with subgroup 
+
+# Categorical exposure matrix, nxJ, 1150 x 49
+x_mat <- as.matrix(study_data_dropna %>% select(citrus_juice:soup_oth)) 
+dim(x_mat)
+# Stratum indicators, nx1
+stratum_id <- c(as.numeric(study_data_dropna$STRAT))      
+# Cluster indicators, nx1
+cluster_id <- c(as.numeric(study_data_dropna$PSU_ID))                   
+# Survey sampling weights, nx1
+sampling_wt <- c(as.numeric(study_data_dropna$WEIGHT_FINAL_EXPANDED))   
+# Subgroup variable, nx1
+h_all <- c(as.numeric(study_data_dropna$subgroup_income_nativity_age))
+
+seed <- 1
+res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all, 
+                 sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                 stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
+                 adapt_seed = seed, class_cutoff_global = 0.05, n_runs = 20000, 
+                 burn = 10000, thin = 5, update = 1000, switch = 50, save_res = TRUE, 
+                 save_path = paste0(wd, res_dir, "HCHS_women_income_nativity_age"))
+res_wrpc$runtime # 1.5 hours, K = 3
+
 
 #================== Puerto Rican, INCOME-GENDER-AGE ============================
 
@@ -418,7 +487,7 @@ res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all,
                  adapt_seed = seed, class_cutoff_global = 0.05, n_runs = 10000, 
                  burn = 5000, thin = 5, update = 1000, switch = 50, save_res = TRUE, 
                  save_path = paste0(wd, res_dir, "HCHS_income_gender_age"))
-res_wrpc$runtime # 1.3 hours
+res_wrpc$runtime # 1.3 hours, K = 5
 
 
 
@@ -437,6 +506,7 @@ plot_wrpc_global_pattern_profiles(res = res_wrpc,
 plot_global_pattern_probs(res = res_wrpc, item_labels = item_labels, 
                           categ_labels = categ_labels,
                           num_rows = 7) 
+par(mfrow = c(1,1), mar = c(5.1, 4.1, 4.1, 2.1))
 plot(res_wrpc$post_MCMC_out$dendrogram_global)
 # Average posterior probability
 mean(apply(res_wrpc$estimates$pred_global_class_probs, 1, max))

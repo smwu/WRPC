@@ -331,7 +331,8 @@ plot_class_subgroup_dist <- function(res,
   colnames(grid_plot) <- c(class_title, subgroup_title, "Frequency")
   
   
-  grid_plot %>% ggplot(aes(x = Subgroup, y = Frequency, 
+  grid_plot %>% ggplot(aes(x = factor(Subgroup, levels = rev(1:res$data_vars$H), 
+                                      labels = rev(subgroup_labels)), y = Frequency, 
                            group = factor(Class, levels = rev(class_labels)),
                            fill = factor(Class, levels = class_labels))) + 
     geom_bar(stat = "identity", position = "stack") +

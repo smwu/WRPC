@@ -1,5 +1,5 @@
 #====================================================
-# Analyzing HCHS data for Carribean background
+# Analyzing HCHS data for Puerto Rican background
 # Step 1: Deriving CVD risk groups using CVD and 
 # including self-report in cardiometabolic definitions
 # Author: Stephanie Wu
@@ -62,41 +62,6 @@ study_data <- raw_derv_vars %>%
 # Check all 5-level foods
 apply(study_data %>% select(citrus_juice:soup_oth), 2, 
       function(x) max(x, na.rm = TRUE))
-
-# 
-# # Select diet variables
-# fpq_data <- sol_data %>% 
-#   select(ID, STRAT, PSU_ID, CENTER, BKGRD1_C6, fp2:fp1)
-# 
-# ### Check site x background numbers
-# # Site: B=Bronx, C=Chicago, M=Miami, S=San Diego
-# # Background: 0=Dominican, 1=Central or South American, 2=Cuban, 3=Mexican, 
-# # 4=Puerto Rican, 5=More than one/Other heritage 
-# table(fpq_data$CENTER, fpq_data$BKGRD1_C6)
-# 
-# # Drop NAs: n=12761
-# fpq_dropna <- fpq_data %>% drop_na()
-# 
-# # Merge in derived variables, which include demographic and outcome variables.
-# # Merge in self-report variables
-# # Combined study data: 12761 x 521
-# study_data <- raw_derv_vars %>% 
-#   mutate(ID = as.integer(ID)) %>%
-#   left_join(raw_mhea_vars %>% mutate(ID = as.integer(ID)), by = join_by(ID)) %>%
-#   right_join(fpq_dropna %>% 
-#                select(ID, fp2:fp1) %>% 
-#                mutate(across(fp2:fp1, as.numeric)), by = join_by(ID)) 
-# 
-# # Find 5-level foods
-# which(apply(fpq_dropna[, -c(1:5)], 2, 
-#             function(x) max(x, na.rm = TRUE) == 5))
-# # Convert 5-level foods to 4 levels
-# study_data <- study_data %>%
-#   mutate_at(c("fp2", "fp116", "fp7", "fp10", "fp11", "fp12", "fp13", "fp17", 
-#               "fp53", "fp101"), ~ifelse(.x == 5, 4, .x))
-# # Check no 5-level foods
-# apply(study_data %>% select(fp2:fp1), 2, function(x) max(x, na.rm = TRUE))
-
 
 #==================== Confounders cleaning ========================================
 
@@ -222,7 +187,7 @@ naniar::gg_miss_var(study_data_conf_cmd %>%
                              dyslip_sr, dyslip_lab_med_sr))
 
 
-#==================== Preparing HCHS data w/ PR, DR, and Cuban =================
+#==================== Preparing HCHS data w/ PR ================================
 
 # Sample size after dropping all missingness: n = 12489
 study_data_dropna <- study_data_conf_cmd %>% 
@@ -242,22 +207,22 @@ study_data_dropna <- study_data_conf_cmd %>%
 table(study_data_dropna$CVD_FRAME, useNA = "always")
 prop.table(table(study_data_dropna$CVD_FRAME, useNA = "always"))
 
-### Subset to Carribean backgrounds (Dominican, Cuban, and Puerto Rican)
-# n = 5086
+### Subset to Puerto Rican
+# n = 1990
 study_data_dropna <- study_data_dropna %>%
-  filter(BKGRD1_C6 %in% c(0, 2, 4))
+  filter(BKGRD1_C6 %in% c(4))
 
-table(study_data_dropna$CVD_FRAME, useNA = "always")  # 1844
-prop.table(table(study_data_dropna$CVD_FRAME, useNA = "always")) # 36%
+table(study_data_dropna$CVD_FRAME, useNA = "always")  # 867
+prop.table(table(study_data_dropna$CVD_FRAME, useNA = "always")) # 44%
 
 # # Save cleaned data
-# write.csv(study_data_dropna, file = paste0(wd, data_dir, "cleaned_data_carrib.csv"),
+# write.csv(study_data_dropna, file = paste0(wd, data_dir, "cleaned_data_pr.csv"),
 #           row.names = FALSE)
 
 
 #============== Derive confounder risk groups supervised by CVD ================
 
-# study_data_dropna <- read.csv(paste0(wd, data_dir, "cleaned_data_carrib.csv"))
+# study_data_dropna <- read.csv(paste0(wd, data_dir, "cleaned_data_pr.csv"))
 
 # Confounder risk factors
 x_mat <- as.matrix(study_data_dropna %>% 
@@ -280,28 +245,11 @@ res_conf_sup <- baysc::swolca(x_mat = x_mat, y_all = y_all, glm_form = glm_form,
                               stratum_id = stratum_id, run_sampler = "both", K_max = 30, 
                               adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
                               burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
-                              save_path = paste0(wd, res_dir, "conf_sup_carrib_full"))
+                              save_path = paste0(wd, res_dir, "conf_sup_pr_full"))
 res_conf_sup$runtime  # 70 mins, 4 classes
 res_conf_sup_varadj <- baysc::swolca_var_adjust(res = res_conf_sup, save_res = TRUE, 
-                                                save_path = paste0(wd, res_dir, "conf_sup_carrib_full_varadj"))
+                                                save_path = paste0(wd, res_dir, "conf_sup_pr_full_varadj"))
 res_conf_sup <- res_conf_sup_varadj
-
-# # Try with additional confounders
-# # Additional confounders
-# V_data <- as.data.frame(study_data_dropna %>% 
-#   select(bmi_c3, hyp_lab_med_sr, diab_lab_med_sr, 
-#          dyslip_lab_med_sr) %>%
-#   mutate_all(as.factor))
-# glm_form <- "~ bmi_c3 + hyp_lab_med_sr + diab_lab_med_sr + dyslip_lab_med_sr"
-# set.seed(1)
-# res_conf_sup_cov <- baysc::swolca(x_mat = x_mat, y_all = y_all, V_data = V_data,
-#                                   glm_form = glm_form, 
-#                               sampling_wt = sampling_wt, cluster_id = cluster_id, 
-#                               stratum_id = stratum_id, run_sampler = "both", K_max = 30, 
-#                               adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
-#                               burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
-#                               save_path = paste0(wd, res_dir, "conf_sup_carrib_cov_full"))
-# res_conf_sup_cov_varadj <- baysc::swolca_var_adjust(res = res_conf_sup_cov, save_res = FALSE)
 
 
 ### Check results
@@ -313,8 +261,7 @@ y_title <- "Risk Level Probability"
 # res_conf_sup <- reorder_classes(res = res_conf_sup, new_order = c(4, 3, 2, 1))
 # Use some of the changed functions
 plot_pattern_probs(res_conf_sup, item_labels = item_labels, 
-                   categ_labels = c("Low", "Medium", "High"),
-                   categ_title = categ_title, y_title = y_title, num_rows = 3)
+                   categ_title = categ_title, y_title = y_title, num_rows = 2)
 baysc::plot_pattern_profiles(res_conf_sup, item_labels = item_labels,
                              categ_title = categ_title, y_title = y_title, )
 plot_class_dist(res_conf_sup)
@@ -323,7 +270,7 @@ plot(res_conf_sup$post_MCMC_out$dendrogram)
 regr_coefs <- get_regr_coefs(res = res_conf_sup)
 plot_regr_coefs(regr_coefs = regr_coefs, res = res_conf_sup)
 plot_outcome_probs(res_conf_sup)
-# Average posterior probability: 0.92
+# Average posterior probability: 0.95
 mean(apply(res_conf_sup$estimates$pred_class_probs, 1, max))
 
 
@@ -375,7 +322,7 @@ for (k in 1:K) {
 
 #============== Derive cardiometabolic risk groups =============================
 
-# study_data_dropna <- read.csv(paste0(wd, data_dir, "cleaned_data_carrib.csv"))
+# study_data_dropna <- read.csv(paste0(wd, data_dir, "cleaned_data_pr.csv"))
 
 ### Supervised by CVD 
 # Cardiometabolic indicators risk factors
@@ -399,168 +346,11 @@ res_cmd_sup <- baysc::swolca(x_mat = x_mat, y_all = y_all, glm_form = glm_form,
                              stratum_id = stratum_id, run_sampler = "both", K_max = 30, 
                              adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
                              burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
-                             save_path = paste0(wd, res_dir, "cmd_sup_carrib_full"))
+                             save_path = paste0(wd, res_dir, "cmd_sup_pr_full"))
 res_cmd_sup$runtime  # 40 mins, 4 classes
 res_cmd_sup_varadj <- baysc::swolca_var_adjust(res = res_cmd_sup, save_res = TRUE, 
-                                                save_path = paste0(wd, res_dir, "cmd_sup_carrib_full_varadj"))
+                                               save_path = paste0(wd, res_dir, "cmd_sup_pr_full_varadj"))
 res_cmd_sup <- res_cmd_sup_varadj
-
-
-### Try clustering all CVD risk factors at the same time
-# Supervised by CVD 
-# All risk factors
-x_mat <- as.matrix(study_data_dropna %>% 
-                     select(bmi_c3, hyp_lab_med_sr, diab_lab_med_sr, 
-                            dyslip_lab_med_sr, AGE_C3, GENDER, CIGARETTE_USE, ALCOHOL_USE, GPAQ_LEVEL,
-                            DIAB_FAMHIST, FH_CHD, FH_STROKE, EVER_ANGINA_RELATIVE,
-                            EVER_MI_RELATIVE, EVER_CABG_RELATIVE))
-summary(x_mat)
-# Binary outcome
-y_all <- c(as.numeric(study_data_dropna$CVD_FRAME))  
-# Stratum indicators, nx1
-stratum_id <- c(as.numeric(study_data_dropna$STRAT))      
-# Cluster indicators, nx1
-cluster_id <- c(as.numeric(study_data_dropna$PSU_ID))                   
-# Survey sampling weights, nx1
-sampling_wt <- c(as.numeric(study_data_dropna$WEIGHT_FINAL_EXPANDED))   
-glm_form <- "~ 1"  # no additional confounders
-seed <- 1
-res_both_sup <- baysc::swolca(x_mat = x_mat, y_all = y_all, glm_form = glm_form, 
-                             sampling_wt = sampling_wt, cluster_id = cluster_id, 
-                             stratum_id = stratum_id, run_sampler = "both", K_max = 30, 
-                             adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
-                             burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
-                             save_path = paste0(wd, res_dir, "both_sup_carrib_full"))
-res_both_sup$runtime  # 1.5 hours, 4 classes
-
-item_labels <- c("BMI", "Hypertension", "Diabetes", "Dyslipidemia", 
-                 "Age", "Gender", "Smoking", "Alcohol", "PA", "FH_Diab", 
-                 "FH_CHD", "FH_Stroke", "Rel_Angina", "Rel_MI", "Rel_CABG")
-categ_title <- "Risk Level"
-y_title <- "Risk Level Probability"
-# Reorder classes (USE NEW REORDER FUNCTION!)
-res_both_sup <- reorder_classes(res = res_both_sup, new_order = c(3, 1, 2))
-# Use some of the changed functions
-plot_pattern_probs(res_both_sup, item_labels = item_labels, 
-                   categ_title = categ_title, y_title = y_title, num_rows = 2)
-baysc::plot_pattern_profiles(res_both_sup, item_labels = item_labels,
-                             categ_title = categ_title, y_title = y_title)
-plot_class_dist(res_both_sup)
-par(mfrow = c(1,1), mar = c(5.1, 4.1, 4.1, 2.1))
-plot(res_both_sup$post_MCMC_out$dendrogram)
-regr_coefs <- get_regr_coefs(res = res_both_sup)
-plot_regr_coefs(regr_coefs = regr_coefs, res = res_both_sup)
-plot_outcome_probs(res_both_sup)
-# Average posterior probability: 0.95
-mean(apply(res_both_sup$estimates$pred_class_probs, 1, max))
-
-
-# # Try with additional confounders
-# # Additional confounders
-# V_data <- as.data.frame(study_data_dropna %>% 
-#                           # Create composite family history score
-#                           mutate(FH_CVD = case_when(
-#                             DIAB_FAMHIST == 3 | FH_CHD == 3 | FH_STROKE == 3 | 
-#                               EVER_ANGINA_RELATIVE == 3 | EVER_MI_RELATIVE == 3 | 
-#                               EVER_CABG_RELATIVE == 3 ~ 1,
-#                             .default = 0
-#                           )) %>% 
-#                           select(AGE_C3, GENDER, CIGARETTE_USE, ALCOHOL_USE, 
-#                                  GPAQ_LEVEL, FH_CVD) %>%
-#                           mutate_all(as.factor))
-# glm_form <- "~ AGE_C3 + GENDER + CIGARETTE_USE + ALCOHOL_USE + GPAQ_LEVEL + FH_CVD"
-# set.seed(1)
-# res_cmd_sup_cov <- baysc::swolca(x_mat = x_mat, y_all = y_all, V_data = V_data,
-#                                   glm_form = glm_form, 
-#                                   sampling_wt = sampling_wt, cluster_id = cluster_id, 
-#                                   stratum_id = stratum_id, run_sampler = "both", K_max = 30, 
-#                                   adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
-#                                   burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
-#                                   save_path = paste0(wd, res_dir, "cmd_sup_carrib_cov_full"))
-# res_cmd_sup_cov_varadj <- baysc::swolca_var_adjust(res = res_cmd_sup_cov, save_res = FALSE)
-# 
-# # Try with additional confounders VERSION 2
-# # Add age_centered
-# study_data_temp <- study_data_dropna %>%
-#   left_join(raw_derv_vars %>% select(ID, AGE) %>% mutate(ID = as.numeric(ID)), 
-#             by = join_by(ID)) %>%
-#   mutate(age_cent = AGE - mean(AGE, na.rm = TRUE))
-# # Additional confounders
-# V_data <- as.data.frame(study_data_temp %>% 
-#                           # Create composite family history score
-#                           mutate(fh_bin = case_when(
-#                             DIAB_FAMHIST == 3 | FH_CHD == 3 | FH_STROKE == 3 | 
-#                               EVER_ANGINA_RELATIVE == 3 | EVER_MI_RELATIVE == 3 | 
-#                               EVER_CABG_RELATIVE == 3 ~ 1,
-#                             .default = 0
-#                           ),
-#                           gender_bin = ifelse(GENDER == 3, 1, 0), # 0=M, 1=F
-#                           cig_bin = ifelse(CIGARETTE_USE == 3, 1, 0), # 1 = current
-#                           alc_bin = ifelse(ALCOHOL_USE == 3, 1, 0), # 1 = current
-#                           pa_bin = ifelse(GPAQ_LEVEL == 3, 1, 0), # 1 = sedentary
-#                           ) %>%  
-#                           select(age_cent, gender_bin, cig_bin, alc_bin, pa_bin, 
-#                                  fh_bin) %>%
-#                           mutate_at(c("gender_bin", "cig_bin", "alc_bin", 
-#                                       "pa_bin", "fh_bin"), as.factor))
-# glm_form <- "~ age_cent + gender_bin + cig_bin + alc_bin + pa_bin + fh_bin"
-# set.seed(1)
-# res_cmd_sup_cov_v2 <- baysc::swolca(x_mat = x_mat, y_all = y_all, V_data = V_data,
-#                                  glm_form = glm_form, 
-#                                  sampling_wt = sampling_wt, cluster_id = cluster_id, 
-#                                  stratum_id = stratum_id, run_sampler = "both", K_max = 30, 
-#                                  adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
-#                                  burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
-#                                  save_path = paste0(wd, res_dir, "cmd_sup_carrib_cov_full_v2"))
-# res_cmd_sup_cov_varadj_v2 <- baysc::swolca_var_adjust(res = res_cmd_sup_cov_v2, 
-#                                                       save_res = FALSE)
-# # Posterior prob: 75, K=3, order: 3,2,1
-# 
-# # Try with additional confounders VERSION 3
-# # Additional confounders
-# V_data <- as.data.frame(study_data_dropna %>% 
-#                           # Create composite family history score
-#                           mutate(fh_bin = case_when(
-#                             DIAB_FAMHIST == 3 | FH_CHD == 3 | FH_STROKE == 3 | 
-#                               EVER_ANGINA_RELATIVE == 3 | EVER_MI_RELATIVE == 3 | 
-#                               EVER_CABG_RELATIVE == 3 ~ 1,
-#                             .default = 0
-#                           ),
-#                           gender_bin = ifelse(GENDER == 3, 1, 0), # 0=M, 1=F
-#                           cig_bin = ifelse(CIGARETTE_USE == 3, 1, 0), # 1 = current
-#                           alc_bin = ifelse(ALCOHOL_USE == 3, 1, 0), # 1 = current
-#                           pa_bin = ifelse(GPAQ_LEVEL == 3, 1, 0), # 1 = sedentary
-#                           ) %>%  
-#                           select(AGE_C3, gender_bin, cig_bin, alc_bin, pa_bin, 
-#                                  fh_bin) %>%
-#                           mutate_at(c("AGE_C3", "gender_bin", "cig_bin", "alc_bin", 
-#                                       "pa_bin", "fh_bin"), as.factor))
-# glm_form <- "~ AGE_C3 + gender_bin + cig_bin + alc_bin + pa_bin + fh_bin"
-# set.seed(1)
-# res_cmd_sup_cov_v3 <- baysc::swolca(x_mat = x_mat, y_all = y_all, V_data = V_data,
-#                                     glm_form = glm_form, 
-#                                     sampling_wt = sampling_wt, cluster_id = cluster_id, 
-#                                     stratum_id = stratum_id, run_sampler = "both", K_max = 30, 
-#                                     adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
-#                                     burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
-#                                     save_path = paste0(wd, res_dir, "cmd_sup_carrib_cov_full_v3"))
-# res_cmd_sup_cov_varadj_v3 <- baysc::swolca_var_adjust(res = res_cmd_sup_cov_v3, 
-#                                                       save_res = FALSE)
-# # Posterior prob: 80, 4 classes
-# 
-# 
-# # Try unsupervised
-# set.seed(1)
-# res_cmd <- baysc::wolca(x_mat = x_mat, sampling_wt = sampling_wt, cluster_id = cluster_id, 
-#                                  stratum_id = stratum_id, run_sampler = "both", K_max = 30, 
-#                                  adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
-#                                  burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
-#                                  save_path = paste0(wd, res_dir, "cmd_carrib_full"))
-# # Instability in variance adjustment. H_inv distance 14
-# res_cmd_varadj <- baysc::wolca_var_adjust(res = res_cmd, save_res = FALSE)
-# res_cmd <- reorder_classes(res = res_cmd, new_order = c(3, 4, 2, 5, 1))
-# # Posterior probability: 62
-
 
 
 ### Check results
@@ -571,7 +361,6 @@ y_title <- "Risk Level Probability"
 # res_cmd_sup <- reorder_classes(res = res_cmd_sup, new_order = c(4, 1, 3, 2))
 # Use some of the changed functions
 plot_pattern_probs(res_cmd_sup, item_labels = item_labels, 
-                   categ_labels = c("Low", "Medium", "High"),
                    categ_title = categ_title, y_title = y_title, num_rows = 1)
 baysc::plot_pattern_profiles(res_cmd_sup, item_labels = item_labels, 
                              categ_title = categ_title, y_title = y_title)
@@ -581,7 +370,7 @@ plot(res_cmd_sup$post_MCMC_out$dendrogram)
 regr_coefs <- get_regr_coefs(res = res_cmd_sup)
 plot_regr_coefs(regr_coefs = regr_coefs, res = res_cmd_sup)
 plot_outcome_probs(res_cmd_sup)
-# Average posterior probability: 69
+# Average posterior probability: 80
 mean(apply(res_cmd_sup$estimates$pred_class_probs, 1, max))
 
 table(study_data_dropna$AGE_C3, res_cmd_sup$estimates$c_all)
@@ -635,13 +424,13 @@ for (k in 1:K) {
 
 #=============== Comparing confounder and cardiometabolic risk groups ==========
 ### NOTE: USE LOCAL VERSION OF reorder_classes
-# load(paste0(wd, res_dir, "conf_sup_carrib_full_varadj_swolca_results.RData"))
+# load(paste0(wd, res_dir, "conf_sup_pr_full_varadj_swolca_results.RData"))
 # res_conf_sup <- res
-# res_conf_sup <- reorder_classes(res = res_conf_sup, new_order = c(4, 3, 2, 1))
-# load(paste0(wd, res_dir, "cmd_sup_carrib_full_varadj_swolca_results.RData"))
+# res_conf_sup <- reorder_classes(res = res_conf_sup, new_order = c(3, 2, 1))
+# load(paste0(wd, res_dir, "cmd_sup_pr_full_varadj_swolca_results.RData"))
 # res_cmd_sup <- res
-# res_cmd_sup <- reorder_classes(res = res_cmd_sup, new_order = c(4, 1, 3, 2))
-# study_data_dropna <- read.csv(paste0(wd, data_dir, "cleaned_data_carrib.csv"))
+# res_cmd_sup <- reorder_classes(res = res_cmd_sup, new_order = c(3, 2, 1, 4))
+# study_data_dropna <- read.csv(paste0(wd, data_dir, "cleaned_data_pr.csv"))
 
 # Look at grid of confounder and cardiometabolic risk factors
 table(res_conf_sup$estimates$c_all, res_cmd_sup$estimates$c_all, useNA = "always")
@@ -654,8 +443,6 @@ round(prop.table(
   table(res_cmd_sup$estimates$c_all[res_conf_sup$estimates$c_all == 2])), 2)
 round(prop.table(
   table(res_cmd_sup$estimates$c_all[res_conf_sup$estimates$c_all == 3])), 2)
-round(prop.table(
-  table(res_cmd_sup$estimates$c_all[res_conf_sup$estimates$c_all == 4])), 2)
 
 
 
@@ -681,22 +468,19 @@ round(prop.table(
 round(prop.table(
   table(res_cmd_sup$estimates$c_all[condition & 
                                       res_conf_sup$estimates$c_all == 3])), 2)
-round(prop.table(
-  table(res_cmd_sup$estimates$c_all[condition & 
-                                      res_conf_sup$estimates$c_all == 4])), 2)
 # By levels of the cardiometabolic risk group
 round(prop.table(
   table(res_conf_sup$estimates$c_all[condition & 
-                                      res_cmd_sup$estimates$c_all == 1])), 2)
+                                       res_cmd_sup$estimates$c_all == 1])), 2)
 round(prop.table(
   table(res_conf_sup$estimates$c_all[condition & 
-                                      res_cmd_sup$estimates$c_all == 2])), 2)
+                                       res_cmd_sup$estimates$c_all == 2])), 2)
 round(prop.table(
   table(res_conf_sup$estimates$c_all[condition & 
-                                      res_cmd_sup$estimates$c_all == 3])), 2)
+                                       res_cmd_sup$estimates$c_all == 3])), 2)
 round(prop.table(
   table(res_conf_sup$estimates$c_all[condition & 
-                                      res_cmd_sup$estimates$c_all == 4])), 2)
+                                       res_cmd_sup$estimates$c_all == 4])), 2)
 
 
 # Create subgroup
@@ -705,38 +489,20 @@ study_data_dropna <- study_data_dropna %>%
          cmd_risk = res_cmd_sup$estimates_adjust$c_all) %>%
   mutate(subgroup = case_when(
     cmd_risk == 1 & conf_risk == 1 ~ 1,  # low : low
-    cmd_risk == 1 & conf_risk == 2 ~ 2,  # low : low-med
-    cmd_risk == 1 & conf_risk == 3 ~ 3,  # low : med
-    cmd_risk == 1 & conf_risk == 4 ~ 4,  # low : high
-    cmd_risk == 2 & conf_risk == 1 ~ 5,  # med-low : low
-    cmd_risk == 2 & conf_risk == 2 ~ 6,  # med-low : low-med
-    cmd_risk == 2 & conf_risk == 3 ~ 7,  # med-low : med
-    cmd_risk == 2 & conf_risk == 4 ~ 8,  # med-low : high
-    cmd_risk == 3 & conf_risk == 1 ~ 9,  # med : low
-    cmd_risk == 3 & conf_risk == 2 ~ 10,  # med : low-med
-    cmd_risk == 3 & conf_risk == 3 ~ 11,  # med : med
-    cmd_risk == 3 & conf_risk == 4 ~ 12,  # med : high
-    cmd_risk == 4 & conf_risk == 1 ~ 13,  # high : low
-    cmd_risk == 4 & conf_risk == 2 ~ 14,  # high : low-med
-    cmd_risk == 4 & conf_risk == 3 ~ 15,  # high : med
-    cmd_risk == 4 & conf_risk == 4 ~ 16,  # high : high
-    .default = NA
-  ), 
-  # Subgroup version 2, combining the two highest risk groups
-  subgroup2 = case_when(
-    cmd_risk == 1 & conf_risk == 1 ~ 1,  # low-low
-    cmd_risk == 1 & conf_risk == 2 ~ 2,  # low-med
-    cmd_risk == 1 & conf_risk %in% c(3, 4) ~ 3,  # low-high
-    cmd_risk == 2 & conf_risk == 1 ~ 4,  # med-low
-    cmd_risk == 2 & conf_risk == 2 ~ 5,  # med-med
-    cmd_risk == 2 & conf_risk %in% c(3, 4) ~ 6,  # med-high
-    cmd_risk %in% c(3, 4) & conf_risk == 1 ~ 7,  # high-low
-    cmd_risk %in% c(3, 4) & conf_risk == 2 ~ 8,  # high-med
-    cmd_risk %in% c(3, 4) & conf_risk %in% c(3, 4) ~ 9,  # high-high
+    cmd_risk == 1 & conf_risk == 2 ~ 2,  # low : med
+    cmd_risk == 1 & conf_risk == 3 ~ 3,  # low : high
+    cmd_risk == 2 & conf_risk == 1 ~ 4,  # med-low : low
+    cmd_risk == 2 & conf_risk == 2 ~ 5,  # med-low : med
+    cmd_risk == 2 & conf_risk == 3 ~ 6,  # med-low : high
+    cmd_risk == 3 & conf_risk == 1 ~ 7,  # med : low
+    cmd_risk == 3 & conf_risk == 2 ~ 8,  # med : med
+    cmd_risk == 3 & conf_risk == 3 ~ 9,  # med : high
+    cmd_risk == 4 & conf_risk == 1 ~ 10,  # high : low
+    cmd_risk == 4 & conf_risk == 2 ~ 11,  # high : med
+    cmd_risk == 4 & conf_risk == 3 ~ 12,  # high : high
     .default = NA
   ))
 table(study_data_dropna$subgroup)
-table(study_data_dropna$subgroup2)
 
 # Save full sample data
 study_data_dropna_full <- study_data_dropna
@@ -772,7 +538,7 @@ study_data_dropna <- study_data_dropna_subset
 
 ### Run WRPC with subgroup version 1
 
-# Categorical exposure matrix, nxJ, 1670x49
+# Categorical exposure matrix, nxJ, 536x49
 x_mat <- as.matrix(study_data_dropna %>% select(citrus_juice:soup_oth)) 
 # Stratum indicators, nx1
 stratum_id <- c(as.numeric(study_data_dropna$STRAT))      
@@ -789,7 +555,7 @@ res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all,
                  stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
                  adapt_seed = seed, class_cutoff_global = 0.05, n_runs = 20000, 
                  burn = 10000, thin = 5, update = 1000, switch = 100, save_res = TRUE, 
-                 save_path = paste0(wd, res_dir, "HCHS_carrib_subset"))
+                 save_path = paste0(wd, res_dir, "HCHS_pr_subset"))
 res_wrpc$runtime # 3 hours, K=4
 
 
@@ -807,11 +573,11 @@ sampling_wt <- NULL
 h_all <- c(as.numeric(study_data_dropna$subgroup))
 seed <- 1
 res_wrpc_unwt <- wrpc(x_mat = x_mat, h_all = h_all, 
-                 sampling_wt = sampling_wt, cluster_id = cluster_id, 
-                 stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
-                 adapt_seed = seed, class_cutoff_global = 0.05, n_runs = 20000, 
-                 burn = 10000, thin = 5, update = 1000, switch = 100, save_res = TRUE, 
-                 save_path = paste0(wd, res_dir, "HCHS_carrib_subset_unwt"))
+                      sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                      stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
+                      adapt_seed = seed, class_cutoff_global = 0.05, n_runs = 20000, 
+                      burn = 10000, thin = 5, update = 1000, switch = 100, save_res = TRUE, 
+                      save_path = paste0(wd, res_dir, "HCHS_carrib_subset_unwt"))
 res_wrpc_unwt$runtime  # 2.7 hours, K = 5
 
 
@@ -857,9 +623,9 @@ plot_wrpc_global_pattern_profiles(res = res_wrpc,
   theme(legend.text = element_text(size = 10),
         legend.title = element_text(size = 10))
 subgroup_labels <- c("L:L", "L:LM", "L:M", "L:H", 
-                        "LM:L", "LM:LM", "LM:M", "LM:H",
-                        "M:L", "M:LM", "M:M", "M:H",
-                        "H:L", "H:LM", "H:M", "H:H")
+                     "LM:L", "LM:LM", "LM:M", "LM:H",
+                     "M:L", "M:LM", "M:M", "M:H",
+                     "H:L", "H:LM", "H:M", "H:H")
 # subgroup_labels <- c("L:L", "L:M", "L:H", 
 #                      "M:L", "M:M", "M:H",
 #                      "H:L", "H:M", "H:H")
@@ -874,37 +640,15 @@ plot_wrpc_allocation(res = res_wrpc, item_labels = item_labels,
                      subgroup_labels = subgroup_labels, 
                      subgroup_title = "CVD Risk Group")
 plot_wrpc_local_profiles_allocation(res = res_wrpc, 
-                                 item_labels = item_labels, item_title = "Item",
-                                 categ_labels = categ_labels,
-                                 subgroup_labels = subgroup_labels,
-                                 subgroup_title = "CVD Risk Group")
+                                    item_labels = item_labels, item_title = "Item",
+                                    categ_labels = categ_labels,
+                                    subgroup_labels = subgroup_labels,
+                                    subgroup_title = "CVD Risk Group")
 # Proportion of each subpopulation following each pattern
 table(res_wrpc$estimates$c_all, res_wrpc$data_vars$h_all)
 plot_class_subgroup_dist(res = res_wrpc, subgroup_labels = subgroup_labels, 
                          subgroup_title = "Subgroup", normalize = TRUE)
 
-
-### Run WRPC with subgroup version 2
-
-# Categorical exposure matrix, nxJ, 2879x129
-x_mat <- as.matrix(study_data_dropna %>% select(citrus_juice:soup_oth)) 
-# Stratum indicators, nx1
-stratum_id <- c(as.numeric(study_data_dropna$STRAT))      
-# Cluster indicators, nx1
-cluster_id <- c(as.numeric(study_data_dropna$PSU_ID))                   
-# Survey sampling weights, nx1
-sampling_wt <- c(as.numeric(study_data_dropna$WEIGHT_FINAL_EXPANDED))   
-# Subgroup variable, nx1
-h_all <- c(as.numeric(study_data_dropna$subgroup2))
-
-seed <- 1
-res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all, 
-                 sampling_wt = sampling_wt, cluster_id = cluster_id, 
-                 stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
-                 adapt_seed = seed, class_cutoff_global = 0.05, n_runs = 20000, 
-                 burn = 10000, thin = 5, update = 1000, switch = 100, save_res = TRUE, 
-                 save_path = paste0(wd, res_dir, "HCHS_carrib_subset_v2"))
-res_wrpc$runtime # 2.2 hours
 
 
 
@@ -969,11 +713,11 @@ sampling_wt <- c(as.numeric(study_data_dropna$WEIGHT_FINAL_EXPANDED))
 
 seed <- 1
 res_wolca <- baysc::wolca(x_mat = x_mat, 
-                 sampling_wt = sampling_wt, cluster_id = cluster_id, 
-                 stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
-                 adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
-                 burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
-                 save_path = paste0(wd, res_dir, "HCHS_carrib_subset_wolca"))
+                          sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                          stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
+                          adapt_seed = seed, class_cutoff = 0.05, n_runs = 20000, 
+                          burn = 10000, thin = 5, update = 1000, save_res = TRUE, 
+                          save_path = paste0(wd, res_dir, "HCHS_carrib_subset_wolca"))
 res_wolca$runtime # 1.1 hours, K=5
 baysc::plot_pattern_profiles(res_wolca, item_labels = item_labels)
 plot_pattern_probs(res_wolca, item_labels = item_labels, num_rows = 7)
@@ -989,7 +733,7 @@ study_data_dropna <- study_data_dropna_full
 
 ### Run WRPC with subgroup version 1
 
-# Categorical exposure matrix, nxJ, 5086x49
+# Categorical exposure matrix, nxJ, 1990x49
 x_mat <- as.matrix(study_data_dropna %>% select(citrus_juice:soup_oth)) 
 # Stratum indicators, nx1
 stratum_id <- c(as.numeric(study_data_dropna$STRAT))      
@@ -1006,7 +750,7 @@ res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all,
                  stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
                  adapt_seed = seed, class_cutoff_global = 0.05, n_runs = 20000, 
                  burn = 10000, thin = 5, update = 1000, switch = 100, save_res = TRUE, 
-                 save_path = paste0(wd, res_dir, "HCHS_carrib_full"))
+                 save_path = paste0(wd, res_dir, "HCHS_pr_full"))
 res_wrpc$runtime # 3 hours, K=6
 
 
