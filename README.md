@@ -1,6 +1,6 @@
 # **WRPC**: Weighted Robust Profile Clustering
 
-A repo for running the Bayesian weighted robust profile clustering model on survey data. The following folders are included:
+A repo for running the Bayesian weighted robust profile clustering model (WRPC) on survey data using R software. Parameter estimation is carried out via a custom Gibbs sampler implemented in R and Rcpp. The following folders are included in this repo:
 
 - `Model_Code`: Code containing main functions for running the WRPC model. Contains subfolder `NIMBLE` that contains implementation of WRPC in NIMBLE [https://r-nimble.org](https://r-nimble.org).
 - `Application`: Code for applying WRPC to data from the Hispanic Community Health Study/Study of Latinos (HCHS/SOL)
