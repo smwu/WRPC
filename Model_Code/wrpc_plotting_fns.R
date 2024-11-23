@@ -4,12 +4,44 @@
 
 library(tidyverse)
 
+#' Plot theta modal exposure categories for each global latent class
+#'
+#' @description
+#' `plot_wrpc_global_pattern_profiles` plots a heatmap of the global latent 
+#' class patterns, where the patterns are defined by the category with the 
+#' highest probability (i.e., the model category) for each exposure item.
+#'
+#' @param res An object of class `"wrpc"`, resulting from a call to [wrpc()]. 
+#' @param item_labels String vector of names for the exposure items. Jx1. If
+#' `NULL` (default), numbers from 1 to J are used.
+#' @param item_title String specifying the title for the exposure items. 
+#' Default is `"Item"`.
+#' @param categ_labels String vector of names for the item categories. Rx1. If
+#' `NULL` (default), numbers from 1 to R are used.
+#' @param categ_title String specifying the title for the item categories. 
+#' Default is `"Consumption Level"`.
+#' @param class_labels String vector of names for the latent classes. Kx1. 
+#' If `NULL` (default), numbers from 1 to K are used, where K is the final 
+#' determined number of latent classes.
+#' @param class_title String specifying the title for the latent classes. 
+#' Default is `"Dietary Pattern"`.
+#' @param \dots Additional arguments passed
+#' 
+#' @return
+#' Returns a `ggplot2` object displaying a heatmap of the latent class patterns.
+#' 
+#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_brewer labs 
+#' theme_classic scale_x_discrete theme element_text
+#' @importFrom tidyr gather
+#' @importFrom magrittr %>%
+#' @importFrom rlang .data
+#' @export
 plot_wrpc_global_pattern_profiles <- function(res, item_labels = NULL, 
-                                         item_title = "Item",
-                                  categ_labels = NULL, 
-                                  categ_title = "Consumption Level",
-                                  class_labels = NULL, 
-                                  class_title = "Dietary Pattern", ...) {
+                                              item_title = "Item",
+                                              categ_labels = NULL, 
+                                              categ_title = "Consumption Level",
+                                              class_labels = NULL, 
+                                              class_title = "Dietary Pattern", ...) {
   
   # Check object class
   if (!(class(res) %in% c("swolca", "wolca", "wrpc"))) {
@@ -73,7 +105,38 @@ plot_wrpc_global_pattern_profiles <- function(res, item_labels = NULL,
 }
 
 
-
+#' Plot theta modal exposure categories for each local latent class
+#'
+#' @description
+#' `plot_wrpc_local_pattern_profiles` plots a heatmap of the local latent 
+#' class patterns, where the patterns are defined by the category with the 
+#' highest probability (i.e., the model category) for each exposure item.
+#'
+#' @param res An object of class `"wrpc"`, resulting from a call to [wrpc()]. 
+#' @param item_labels String vector of names for the exposure items. Jx1. If
+#' `NULL` (default), numbers from 1 to J are used.
+#' @param item_title String specifying the title for the exposure items. 
+#' Default is `"Item"`.
+#' @param categ_labels String vector of names for the item categories. Rx1. If
+#' `NULL` (default), numbers from 1 to R are used.
+#' @param categ_title String specifying the title for the item categories. 
+#' Default is `"Consumption Level"`.
+#' @param subgroup_labels String vector of names for the subpopulations. Hx1. 
+#' If `NULL` (default), numbers from 1 to H are used, where H is the final 
+#' determined number of subpopulations.
+#' @param subgroup_title String specifying the title for the subpopulations. 
+#' Default is `"Subgroup"`.
+#' @param \dots Additional arguments passed
+#' 
+#' @return
+#' Returns a `ggplot2` object displaying a heatmap of the latent class patterns.
+#' 
+#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_brewer labs 
+#' theme_classic scale_x_discrete theme element_text
+#' @importFrom tidyr gather
+#' @importFrom magrittr %>%
+#' @importFrom rlang .data
+#' @export
 plot_wrpc_local_pattern_profiles <- function(res, item_labels = NULL, 
                                               item_title = "Item",
                                               categ_labels = NULL, 
@@ -144,6 +207,33 @@ plot_wrpc_local_pattern_profiles <- function(res, item_labels = NULL,
 }
 
 
+#' Plot nu global-local allocation probabilities for each subpopulation and item
+#'
+#' @description
+#' `plot_wrpc_allocation` plots a heatmap of the global-local allocation 
+#' probabilities for each subpopulation and item.
+#'
+#' @param res An object of class `"wrpc"`, resulting from a call to [wrpc()]. 
+#' @param item_labels String vector of names for the exposure items. Jx1. If
+#' `NULL` (default), numbers from 1 to J are used.
+#' @param item_title String specifying the title for the exposure items. 
+#' Default is `"Item"`.
+#' @param subgroup_labels String vector of names for the subpopulations. Hx1. 
+#' If `NULL` (default), numbers from 1 to H are used, where H is the final 
+#' determined number of subpopulations.
+#' @param subgroup_title String specifying the title for the subpopulations. 
+#' Default is `"Subgroup"`.
+#' @param \dots Additional arguments passed
+#' 
+#' @return
+#' Returns a `ggplot2` object displaying a heatmap of the latent class patterns.
+#' 
+#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_brewer labs 
+#' theme_classic scale_x_discrete theme element_text
+#' @importFrom tidyr gather
+#' @importFrom magrittr %>%
+#' @importFrom rlang .data
+#' @export
 plot_wrpc_allocation <- function(res, item_labels = NULL, 
                                  item_title = "Item",
                                  subgroup_labels = NULL, 
@@ -206,8 +296,41 @@ plot_wrpc_allocation <- function(res, item_labels = NULL,
                    legend.position = "right")
 }
 
-# Plot local profiles but gray out tiles that have global allocation probability
-# nu_med >= 0.5
+
+#' Plot theta modal exposure categories for local deviations.
+#'
+#' @description
+#' `plot_wrpc_local_pattern_profiles` plots a heatmap of the local latent 
+#' class patterns, specifically for subpopulation-item combinations that have 
+#' local allocation (i.e., \eqn{\nu} < 0.5). Items that have global allocation 
+#' are grayed out. Pattern values are defined by the category with the highest 
+#' probability (i.e., the model category) for each exposure item.
+#'
+#' @param res An object of class `"wrpc"`, resulting from a call to [wrpc()]. 
+#' @param item_labels String vector of names for the exposure items. Jx1. If
+#' `NULL` (default), numbers from 1 to J are used.
+#' @param item_title String specifying the title for the exposure items. 
+#' Default is `"Item"`.
+#' @param categ_labels String vector of names for the item categories. Rx1. If
+#' `NULL` (default), numbers from 1 to R are used.
+#' @param categ_title String specifying the title for the item categories. 
+#' Default is `"Consumption Level"`.
+#' @param subgroup_labels String vector of names for the subpopulations. Hx1. 
+#' If `NULL` (default), numbers from 1 to H are used, where H is the final 
+#' determined number of subpopulations.
+#' @param subgroup_title String specifying the title for the subpopulations. 
+#' Default is `"Subgroup"`.
+#' @param \dots Additional arguments passed
+#' 
+#' @return
+#' Returns a `ggplot2` object displaying a heatmap of the latent class patterns.
+#' 
+#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_brewer labs 
+#' theme_classic scale_x_discrete theme element_text
+#' @importFrom tidyr gather
+#' @importFrom magrittr %>%
+#' @importFrom rlang .data
+#' @export
 plot_wrpc_local_profiles_allocation <- function(res, item_labels = NULL, 
                                              item_title = "Item",
                                              categ_labels = NULL, 
@@ -261,7 +384,7 @@ plot_wrpc_local_profiles_allocation <- function(res, item_labels = NULL,
   # nu plot values
   colnames(est_alloc_prob) <- subgroup_labels
   nu_vals <- est_alloc_prob %>%
-    mutate(Item = item_labels) %>%
+    mutate(Item = rownames(mode_item_probs)) %>%
     pivot_longer(cols = -Item, names_to = "Subgroup", values_to = "Value")
   
   # Add in nu values
@@ -309,86 +432,31 @@ plot_wrpc_local_profiles_allocation <- function(res, item_labels = NULL,
 }
 
 
-# normalize: normalize within each subgroup
-plot_class_subgroup_dist <- function(res,  
-                                     subgroup_labels = NULL, 
-                                     subgroup_title = "Subgroup",
-                                     class_labels = NULL,
-                                     class_title = "Class", 
-                                     normalize = TRUE) {
-  
-  grid <- table(res$estimates$c_all, res$data_vars$h_all)
-  if (normalize) {
-    grid <- prop.table(grid, margin = 2)
-  }
-  if (is.null(class_labels)) {
-    class_labels <- 1:res$estimates$K_red
-  }
-  if (is.null(subgroup_labels)) {
-    subgroup_labels <- 1:res$data_vars$H
-  }
-  grid_plot <- as.data.frame(grid)
-  colnames(grid_plot) <- c(class_title, subgroup_title, "Frequency")
-  
-  
-  grid_plot %>% ggplot(aes(x = factor(Subgroup, levels = rev(1:res$data_vars$H), 
-                                      labels = rev(subgroup_labels)), y = Frequency, 
-                           group = factor(Class, levels = rev(class_labels)),
-                           fill = factor(Class, levels = class_labels))) + 
-    geom_bar(stat = "identity", position = "stack") +
-    ggplot2::labs(x = subgroup_title, y = "Frequency", fill = class_title) +
-    coord_flip() + 
-    ggplot2::theme_classic() +
-    # guides(fill = guide_legend(
-    #   title = class_title,
-    #   labels = class_labels
-    # )) + 
-    # ggplot2::scale_x_discrete() + 
-    ggplot2::theme(text = ggplot2::element_text(size = 15),
-                   axis.text.x = ggplot2::element_text(size = 12, color = "black"), 
-                   axis.text.y = ggplot2::element_text(size = 11, color = "black"),
-                   axis.title.x = ggplot2::element_text(size = 13, color = "black", face = "bold"),
-                   axis.title.y = ggplot2::element_text(size = 13, color = "black", face = "bold"),
-                   legend.title = ggplot2::element_text(size = 13, color = "black", face = "bold"),
-                   legend.text = ggplot2::element_text(size = 11, color = "black"),
-                   legend.position = "right")
-}
-
-
-plot_conf_cmd_dist <- function(data, normalize = TRUE) {
-  
-  grid <- table(data$conf_risk, data$cmd_risk)
-  if (normalize) {
-    grid <- prop.table(grid, margin = 2)
-  }
-  conf_labels <- 1:length(unique(data$conf_risk))
-  cmd_labels <- 1:length(unique(data$cmd_risk))
-  grid_plot <- as.data.frame(grid)
-  colnames(grid_plot) <- c("Non-CMD Group", "CMD Group", "Frequency")
-  grid_plot %>% ggplot(aes(x = `CMD Group`, y = Frequency, 
-                           group = factor(`Non-CMD Group`, levels = rev(conf_labels)),
-                           fill = factor(`Non-CMD Group`, levels = rev(conf_labels)))) + 
-    geom_bar(stat = "identity", position = "stack") +
-    ggplot2::labs(x = "CMD Group", y = "Frequency", fill = "Non-CMD Group") +
-    coord_flip() + 
-    ggplot2::theme_classic() +
-    ggplot2::theme(text = ggplot2::element_text(size = 15),
-                   axis.text.x = ggplot2::element_text(size = 12, color = "black"), 
-                   axis.text.y = ggplot2::element_text(size = 11, color = "black"),
-                   axis.title.x = ggplot2::element_text(size = 13, color = "black", face = "bold"),
-                   axis.title.y = ggplot2::element_text(size = 13, color = "black", face = "bold"),
-                   legend.title = ggplot2::element_text(size = 13, color = "black", face = "bold"),
-                   legend.text = ggplot2::element_text(size = 11, color = "black"),
-                   legend.position = "right")
-}
-
-
-
-plot_global_pattern_probs <- function(res, item_labels = NULL, categ_labels = NULL, 
-                               categ_title = "Consumption Level",
-                               class_labels = NULL, num_rows = 4,
-                               class_title = "Dietary Pattern", 
-                               y_title = "Consumption Level Probability", ...) {
+#' Plot probabilities of exposure categories, theta, for each global latent class
+#'
+#' @description
+#' `plot_wrpc_global_pattern_probs` plots a grouped barplot of the probability 
+#' of the exposure categories, for each exposure item and each global latent class.
+#' 
+#' @inheritParams plot_global_pattern_profiles
+#' @param y_title String specifying the title for the y-axis. Default is 
+#' `"Consumption Level Probability"`.
+#' @param \dots Additional arguments passed
+#' 
+#' @return
+#' Returns a `ggplot2` object displaying a grouped barplot of the probability of 
+#' the exposure categories, for each exposure item and each global latent class
+#' 
+#' @importFrom ggplot2 ggplot aes geom_bar facet_wrap scale_fill_brewer labs 
+#' theme_bw theme element_text element_blank element_rect
+#' @importFrom magrittr %>%
+#' @importFrom rlang .data
+#' @export
+plot_wrpc_global_pattern_probs <- function(res, item_labels = NULL, categ_labels = NULL, 
+                                           categ_title = "Consumption Level",
+                                           class_labels = NULL, num_rows = 4,
+                                           class_title = "Dietary Pattern", 
+                                           y_title = "Consumption Level Probability", ...) {
   
   # Check object class
   if (!(class(res) %in% c("swolca", "wolca", "wrpc"))) {
@@ -455,5 +523,83 @@ plot_global_pattern_probs <- function(res, item_labels = NULL, categ_labels = NU
                    legend.position = "top",
                    strip.text = ggplot2::element_text(size = 9),
                    strip.background = ggplot2::element_rect(fill = "gray90"))
+}
+
+
+
+#' Plot the distribution of global classes by subpopulations
+#' 
+#' @param normalize Boolean indicating whether to normalize to sum to 1 within 
+#' each subpopulation. Default is `TRUE`.
+#' 
+#' @return
+#' Returns a `ggplot2` object displaying a horizontal stacked bar plot of the 
+#' distribution of global classes for each subpopulation.
+#' 
+plot_wrpc_class_subgroup_dist <- function(res,  
+                                         subgroup_labels = NULL, 
+                                         subgroup_title = "Subgroup",
+                                         class_labels = NULL,
+                                         class_title = "Class", 
+                                         normalize = TRUE) {
+  
+  grid <- table(res$estimates$c_all, res$data_vars$h_all)
+  if (normalize) {
+    grid <- prop.table(grid, margin = 2)
+  }
+  if (is.null(class_labels)) {
+    class_labels <- 1:res$estimates$K_red
+  }
+  if (is.null(subgroup_labels)) {
+    subgroup_labels <- 1:res$data_vars$H
+  }
+  grid_plot <- as.data.frame(grid)
+  colnames(grid_plot) <- c(class_title, subgroup_title, "Frequency")
+  
+  
+  grid_plot %>% ggplot(aes(x = factor(Subgroup, levels = rev(1:res$data_vars$H), 
+                                      labels = rev(subgroup_labels)), y = Frequency, 
+                           group = factor(Class, levels = rev(class_labels)),
+                           fill = factor(Class, levels = class_labels))) + 
+    geom_bar(stat = "identity", position = "stack") +
+    ggplot2::labs(x = subgroup_title, y = "Frequency", fill = class_title) +
+    coord_flip() + 
+    ggplot2::theme_classic() +
+    ggplot2::theme(text = ggplot2::element_text(size = 15),
+                   axis.text.x = ggplot2::element_text(size = 12, color = "black"), 
+                   axis.text.y = ggplot2::element_text(size = 11, color = "black"),
+                   axis.title.x = ggplot2::element_text(size = 13, color = "black", face = "bold"),
+                   axis.title.y = ggplot2::element_text(size = 13, color = "black", face = "bold"),
+                   legend.title = ggplot2::element_text(size = 13, color = "black", face = "bold"),
+                   legend.text = ggplot2::element_text(size = 11, color = "black"),
+                   legend.position = "right")
+}
+
+
+plot_conf_cmd_dist <- function(data, normalize = TRUE) {
+  
+  grid <- table(data$conf_risk, data$cmd_risk)
+  if (normalize) {
+    grid <- prop.table(grid, margin = 2)
+  }
+  conf_labels <- 1:length(unique(data$conf_risk))
+  cmd_labels <- 1:length(unique(data$cmd_risk))
+  grid_plot <- as.data.frame(grid)
+  colnames(grid_plot) <- c("Non-CMD Group", "CMD Group", "Frequency")
+  grid_plot %>% ggplot(aes(x = `CMD Group`, y = Frequency, 
+                           group = factor(`Non-CMD Group`, levels = rev(conf_labels)),
+                           fill = factor(`Non-CMD Group`, levels = rev(conf_labels)))) + 
+    geom_bar(stat = "identity", position = "stack") +
+    ggplot2::labs(x = "CMD Group", y = "Frequency", fill = "Non-CMD Group") +
+    coord_flip() + 
+    ggplot2::theme_classic() +
+    ggplot2::theme(text = ggplot2::element_text(size = 15),
+                   axis.text.x = ggplot2::element_text(size = 12, color = "black"), 
+                   axis.text.y = ggplot2::element_text(size = 11, color = "black"),
+                   axis.title.x = ggplot2::element_text(size = 13, color = "black", face = "bold"),
+                   axis.title.y = ggplot2::element_text(size = 13, color = "black", face = "bold"),
+                   legend.title = ggplot2::element_text(size = 13, color = "black", face = "bold"),
+                   legend.text = ggplot2::element_text(size = 11, color = "black"),
+                   legend.position = "right")
 }
 

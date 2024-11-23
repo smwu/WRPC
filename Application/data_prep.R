@@ -705,13 +705,18 @@ plot_pattern_probs <- function (res, item_labels = NULL, categ_labels = NULL, ca
 reorder_classes <- function (res, new_order) {
   if (!inherits(res, c("swolca", "wolca"))) {
     stop("res must be an object of class `swolca` or `wolca`, resulting \n         from a call to one of these functions")
-  }
-  else if ((inherits(res, "wolca")) & !is.null(res$estimates_svyglm)) {
+  } else if ((inherits(res, "wolca")) & !is.null(res$estimates_svyglm)) {
     warning(paste0("For WOLCA, reordering of classes should be done before ", 
                    "calling wolca_svyglm(). res$estimates_svyglm should be NULL ", 
                    "prior to running this function."))
   }
+  ### CHANGED
+  if (any(sort(unique(new_order)) != sort(unique(res$estimates$c_all)))) {
+    stop("New ordering must have same number of classes and unique values as old ordering.")
+  }
   res_new <- res
+  K <- length(new_order)
+  ### END CHANGED
   if (!is.null(res$estimates_adjust)) {
     ### CHANGED
     res_new$estimates_adjust$pi_red <- res$estimates_adjust$pi_red[, 
@@ -721,11 +726,11 @@ reorder_classes <- function (res, new_order) {
     res_new$estimates_adjust$pi_med <- res$estimates_adjust$pi_med[new_order, drop = FALSE]
     res_new$estimates_adjust$theta_med <- res$estimates_adjust$theta_med[, 
                                                                          new_order, , drop = FALSE]
-    ### END CHANGED
-    for (i in 1:5) {
+    for (i in 1:K) {
       res_new$estimates_adjust$c_all[res$estimates_adjust$c_all == 
                                        new_order[i]] <- i
     }
+    ### END CHANGED
     if (is(res, "swolca")) {
       ### CHANGED
       res_new$estimates_adjust$xi_red <- res$estimates_adjust$xi_red[, 
