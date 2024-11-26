@@ -225,6 +225,8 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
 
   # Begin runtime tracker
   start_time <- Sys.time()
+  # Initialize sampler name to save file
+  sampler_name <- ""
   #================= Read in data ==============================================
   
   print("Read in data")
@@ -251,7 +253,8 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
                      run_sampler = run_sampler, K_max = K_max, 
                      adapt_seed = adapt_seed, K_fixed = K_fixed, 
                      fixed_seed = fixed_seed, class_cutoff_global = class_cutoff_global, 
-                     n_runs = n_runs, burn = burn, thin = thin, update = update,
+                     n_runs = n_runs, burn = burn, thin = thin, 
+                    switch = switch, update = update,
                      save_res = save_res, save_path = save_path,
                      alpha_adapt = alpha_adapt, 
                      eta_global_adapt = eta_global_adapt, 
@@ -267,6 +270,7 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
   
   ### Run adaptive sampler to obtain number of latent classes, K_fixed
   if (run_sampler %in% c("both", "adapt")) { 
+    sampler_name <- "_adapt"
     print("Running adaptive sampler...")
     
     # Set seed
@@ -339,7 +343,7 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
     res <- list(MCMC_out = MCMC_out, K_fixed = K_fixed, K_MCMC = K_MCMC)
     # Save output
     if (save_res) {
-      save(res, file = paste0(save_path, "_wrpc_adapt.RData"))
+      save(res, file = paste0(save_path, "_wrpc", sampler_name, ".RData"))
     }
     
     # Reduce memory burden
@@ -351,6 +355,7 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
   
   ### Run fixed sampler to obtain posteriors
   if (run_sampler %in% c("both", "fixed")) {
+    sampler_name <- "_results"
     print("Running fixed sampler...")
     
     # Set seed
@@ -409,10 +414,11 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
                                    n_runs = n_runs, burn = burn, thin = thin, 
                                    update = update, switch = switch)
     
-    # Save output
-    if (save_res) {
-      save(MCMC_out, file = paste0(save_path, "_wrpc_MCMC_out.RData"))
-    }
+    # # Save output
+    # if (save_res) {
+    #   save(MCMC_out, file = paste0(save_path, "_wrpc_MCMC_out.RData"))
+    # }
+    
     ### Post-processing to recalibrate labels and remove extraneous empty classes
     # Obtain K_med, pi, theta_global, theta_local, dendrogram_global
     post_MCMC_out <- post_process_WRPC(MCMC_out = MCMC_out, J = J, R = R, H = H, 
@@ -438,16 +444,17 @@ wrpc <- function(x_mat, h_all, sampling_wt = NULL, cluster_id = NULL,
     
     class(res) <- "wrpc"
     
-    # Save output
-    if (save_res) {
-      save(res, file = paste0(save_path, "_wrpc_results.RData"))
-    }
   }
   
   #================= Save and return output ====================================
   # Stop runtime tracker
   runtime <- Sys.time() - start_time
   res$runtime <- runtime
+  
+  # Save output
+  if (save_res) {
+    save(res, file = paste0(save_path, "_wrpc", sampler_name, ".RData"))
+  }
   
   # Return output
   return(res)

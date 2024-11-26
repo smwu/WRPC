@@ -30,6 +30,7 @@ fpq_49categ <- read.csv(paste0(wd, data_dir, "fpq_49categ_2024Nov19.csv"))
 # Source WRPC functions
 source(paste0(wd, code_dir, "wrpc.R"))
 source(paste0(wd, code_dir, "wrpc_mcmc_fns.R"))
+source(paste0(wd, code_dir, "wrpc_utilities.R"))
 Rcpp::sourceCpp(paste0(wd, code_dir, "wrpc_mcmc.cpp"))
 
 
@@ -342,6 +343,78 @@ res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all,
 res_wrpc$runtime # 1.5 hours, K = 4
 
 
+#================== Puerto Rican, INCOME (2-cat)-GENDER-AGE ====================
+
+# Subset to Puerto Rican background: n = 2066
+study_data <- comb_data %>%
+  filter(BKGRD1_C6 %in% c(4))
+
+# Exploratory proportions
+# Income: 1= <30k, 2 = >=30k
+# Gender: 1=M, 2=F
+# Age: 1=18-44, 2=45+
+table(study_data$INCOME_C2, study_data$AGEGROUP_C2)
+table(study_data$INCOME_C2, study_data$GENDER)
+table(study_data$AGEGROUP_C2, study_data$GENDER)
+
+### Create subgroup based on income, gender, age
+subgroup_labels <- 
+  c("incL-M-young", "incL-M-old", "incL-F-young", "incL-F-old",
+    "incH-M-young", "incH-M-old", "incH-F-young", "incH-F-old")
+study_data <- study_data %>%
+  mutate(subgroup_incomeC2_gender_age = case_when(
+    INCOME_C2 == 1 & GENDER == 1 & AGEGROUP_C2 == 1 ~ 1,  # incL-M-young
+    INCOME_C2 == 1 & GENDER == 1 & AGEGROUP_C2 == 2 ~ 2,  # incL-M-old
+    INCOME_C2 == 1 & GENDER == 2 & AGEGROUP_C2 == 1 ~ 3,  # incL-F-young
+    INCOME_C2 == 1 & GENDER == 2 & AGEGROUP_C2 == 2 ~ 4,  # incL-F-old
+    INCOME_C2 == 2 & GENDER == 1 & AGEGROUP_C2 == 1 ~ 5,  # incH-M-young
+    INCOME_C2 == 2 & GENDER == 1 & AGEGROUP_C2 == 2 ~ 6,  # incH-M-old
+    INCOME_C2 == 2 & GENDER == 2 & AGEGROUP_C2 == 1 ~ 7,  # incH-F-young
+    INCOME_C2 == 2 & GENDER == 2 & AGEGROUP_C2 == 2 ~ 8, # incH-F-old
+    .default = NA
+  ))
+table(study_data$subgroup_incomeC2_gender_age)
+
+# Check missingness
+# Note: FPQ is already subsetted to complete cases
+naniar::gg_miss_var(study_data %>% 
+                      select(ID, STRAT, PSU_ID, WEIGHT_FINAL_EXPANDED, 
+                             INCOME_NEW_C3, GENDER, AGEGROUP_C2, 
+                             subgroup_incomeC2_gender_age))
+
+# Drop NAs
+# Sample size after dropping all missingness: n = 1896
+study_data_dropna <- study_data %>% 
+  select(ID, STRAT, PSU_ID, WEIGHT_FINAL_EXPANDED, 
+         subgroup_incomeC2_gender_age, citrus_juice:soup_oth) %>% 
+  drop_na()
+
+
+### Run WRPC with subgroup 
+
+# Categorical exposure matrix, nxJ, 1896 x 49
+x_mat <- as.matrix(study_data_dropna %>% select(citrus_juice:soup_oth)) 
+dim(x_mat)
+# Stratum indicators, nx1
+stratum_id <- c(as.numeric(study_data_dropna$STRAT))      
+# Cluster indicators, nx1
+cluster_id <- c(as.numeric(study_data_dropna$PSU_ID))                   
+# Survey sampling weights, nx1
+sampling_wt <- c(as.numeric(study_data_dropna$WEIGHT_FINAL_EXPANDED))   
+# Subgroup variable, nx1
+h_all <- c(as.numeric(study_data_dropna$subgroup_incomeC2_gender_age))
+
+seed <- 1
+res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all, 
+                 sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                 stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
+                 adapt_seed = seed, class_cutoff_global = 0.05, n_runs = 10000, 
+                 burn = 5000, thin = 5, update = 1000, switch = 50, save_res = TRUE, 
+                 save_path = paste0(wd, res_dir, "HCHS_incomeC2_gender_age"))
+res_wrpc$runtime # 1.3 hours, K = 5
+
+
+
 #================== Puerto Rican, INCOME-NATIVITY-AGE AMONG WOMEN ==============
 
 # Subset to Puerto Rican background and women: n = 1258
@@ -412,7 +485,7 @@ res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all,
 res_wrpc$runtime # 1.5 hours, K = 3
 
 
-#================== Puerto Rican, INCOME-GENDER-AGE ============================
+#================== Puerto Rican, INCOME (3-cat)-GENDER-AGE ====================
 
 # Subset to Puerto Rican background: n = 2066
 study_data <- comb_data %>%

@@ -5,5 +5,7 @@
 29Feb2024wt_wrpc_adapt.RData
 29Feb2024wt_wrpc_results.RData
 *.RData
+*.err
+*.out
 /Model_Code/Nimble/Output
 /Application/HCHS_Data
