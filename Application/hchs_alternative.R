@@ -1,7 +1,7 @@
 #====================================================
 # Alternative HCHS analyses
 # Author: Stephanie Wu
-# Date Updated: 2024/11/21
+# Date Updated: 2024/11/26
 #====================================================
 
 rm(list = ls())
@@ -13,7 +13,7 @@ library(naniar)     # missingness
 library(sfsmisc)    # mult.fig
 
 wd <- "~/Documents/Github/WRPC/"
-wd <- "/n/holyscratch01/stephenson_lab/Users/stephwu18/WRPC/"
+wd <- "/n/netscratch/stephenson_lab/Lab/stephwu18/WRPC/"
 code_dir <- "Model_Code/"
 data_dir <- "Application/HCHS_Data/"
 res_dir <- "Results/"
@@ -343,6 +343,41 @@ res_wrpc <- wrpc(x_mat = x_mat, h_all = h_all,
 res_wrpc$runtime # 1.5 hours, K = 4
 
 
+
+### Run Unweighted WRPC with subgroup 
+
+seed <- 1
+res_unwt_wrpc <- wrpc(x_mat = x_mat, h_all = h_all, 
+                 sampling_wt = NULL, cluster_id = NULL, 
+                 stratum_id = NULL, run_sampler = "both", K_max = 20, 
+                 adapt_seed = seed, class_cutoff_global = 0.05, n_runs = 10000, 
+                 burn = 5000, thin = 5, update = 1000, switch = 50, save_res = TRUE, 
+                 save_path = paste0(wd, res_dir, "HCHS_income_nativity_gender_age_unwt"))
+res_unwt_wrpc$runtime # 1.5 hours, K = 4
+plot(res_unwt_wrpc$post_MCMC_out$dendrogram_global)
+# Average posterior probability: 0.94
+mean(apply(res_unwt_wrpc$estimates$pred_global_class_probs, 1, max))
+
+
+### Run WOLCA without subgroup 
+
+seed <- 1
+res_wolca <- baysc::wolca(x_mat = x_mat, 
+                          sampling_wt = sampling_wt, cluster_id = cluster_id, 
+                          stratum_id = stratum_id, run_sampler = "both", K_max = 20, 
+                 adapt_seed = seed, class_cutoff = 0.05, n_runs = 10000, 
+                 burn = 5000, thin = 5, update = 1000, save_res = TRUE, 
+                 save_path = paste0(wd, res_dir, "HCHS_income_nativity_gender_age"))
+res_wolca$runtime # 40 mins, K = 3
+plot(res_wolca$post_MCMC_out$dendrogram)
+# Average posterior probability: 0.94
+mean(apply(res_wolca$estimates$pred_class_probs, 1, max))
+item_labels <- colnames(fpq_49categ[, -c(1:3)])
+categ_labels <- c("None", "Monthly", "Weekly", "Daily", "Daily+")
+baysc::plot_pattern_profiles(res = res_wolca, item_labels = item_labels, 
+                             categ_labels = categ_labels)
+
+
 #================== Puerto Rican, INCOME (2-cat)-GENDER-AGE ====================
 
 # Subset to Puerto Rican background: n = 2066
@@ -576,7 +611,7 @@ plot_wrpc_global_pattern_profiles(res = res_wrpc,
                                   categ_labels = categ_labels) + 
   theme(legend.text = element_text(size = 10),
         legend.title = element_text(size = 10))
-plot_global_pattern_probs(res = res_wrpc, item_labels = item_labels, 
+plot_wrpc_global_pattern_probs(res = res_wrpc, item_labels = item_labels, 
                           categ_labels = categ_labels,
                           num_rows = 7) 
 par(mfrow = c(1,1), mar = c(5.1, 4.1, 4.1, 2.1))
@@ -602,9 +637,9 @@ plot_wrpc_local_profiles_allocation(res = res_wrpc,
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 # Proportion of each subpopulation following each global pattern
 table(res_wrpc$estimates$c_all, res_wrpc$data_vars$h_all)
-plot_class_subgroup_dist(res = res_wrpc, subgroup_labels = subgroup_labels, 
+plot_wrpc_class_subgroup_dist(res = res_wrpc, subgroup_labels = subgroup_labels, 
                          subgroup_title = "Subgroup", normalize = TRUE)
-plot_class_subgroup_dist(res = res_wrpc, subgroup_labels = subgroup_labels, 
+plot_wrpc_class_subgroup_dist(res = res_wrpc, subgroup_labels = subgroup_labels, 
                          subgroup_title = "Subgroup", normalize = FALSE)
 
 ## plot trace of pi
