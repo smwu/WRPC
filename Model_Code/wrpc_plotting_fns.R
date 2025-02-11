@@ -531,22 +531,53 @@ plot_wrpc_global_pattern_probs <- function(res, item_labels = NULL, categ_labels
 #' 
 #' @param normalize Boolean indicating whether to normalize to sum to 1 within 
 #' each subpopulation. Default is `TRUE`.
+#' @param weights Boolean indicating if the proportions should incorporate 
+#' survey weights. Default is `TRUE`.
 #' 
 #' @return
 #' Returns a `ggplot2` object displaying a horizontal stacked bar plot of the 
 #' distribution of global classes for each subpopulation.
 #' 
-plot_wrpc_class_subgroup_dist <- function(res,  
+plot_wrpc_class_subgroup_dist <- function(res, weights = TRUE, 
                                          subgroup_labels = NULL, 
                                          subgroup_title = "Subgroup",
                                          class_labels = NULL,
                                          class_title = "Class", 
                                          normalize = TRUE) {
-  
-  grid <- table(res$estimates$c_all, res$data_vars$h_all)
-  if (normalize) {
-    grid <- prop.table(grid, margin = 2)
+  if (weights) {
+    svy_data <- data.frame(sampling_wt = res$data_vars$sampling_wt, 
+                           subgroup = as.factor(res$data_vars$h_all),
+                           class = as.factor(res$estimates$c_all))
+    svy_design_wts_only <- survey::svydesign(id = ~1, 
+                                             weights = ~sampling_wt, 
+                                             data = svy_data)
+    if (normalize) {
+      # row proportions
+      temp <- as.data.frame(survey::svyby(~class, ~subgroup, svy_design_wts_only, 
+                                          svymean, na.rm = TRUE))
+    } else {
+      # totals
+      temp <- as.data.frame(survey::svyby(~class, ~subgroup, svy_design_wts_only, 
+                                          svytotal, na.rm = TRUE))
+    }
+    
+    grid <- temp %>% 
+      select(subgroup:class4) %>%
+      pivot_longer(cols = class1:class4, names_to = "class_v1", 
+                                         values_to = "Freq") %>%
+      select(class_v1, subgroup, Freq)
+    grid$class <- stringr::str_remove(grid$class_v1, "class")
+    grid <- grid %>% select(class, subgroup, Freq)
+    
+    # knitr::kable(grid, digits = 3, booktabs = TRUE)
+    # colSums(grid)
+  } else {
+    grid <- table(res$estimates$c_all, res$data_vars$h_all)
+    if (normalize) {
+      grid <- prop.table(grid, margin = 2)
+    }
   }
+  
   if (is.null(class_labels)) {
     class_labels <- 1:res$estimates$K_red
   }

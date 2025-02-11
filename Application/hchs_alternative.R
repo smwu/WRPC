@@ -11,6 +11,9 @@ library(baysc)      # bayesian survey clustering
 library(haven)      # read sas file
 library(naniar)     # missingness
 library(sfsmisc)    # mult.fig
+library(survey)
+library(knitr)
+library(kableExtra)
 
 wd <- "~/Documents/Github/WRPC/"
 wd <- "/n/netscratch/stephenson_lab/Lab/stephwu18/WRPC/"
@@ -303,6 +306,7 @@ study_data <- study_data %>%
     .default = NA
   ))
 table(study_data$subgroup_income_nativity_gender_age)
+
 
 # Check missingness
 # Note: FPQ is already subsetted to complete cases
@@ -600,20 +604,48 @@ res_wrpc$runtime # 1.3 hours, K = 5
 
 
 #=================== Plotting results ==========================================
+# load(paste0(wd, res_dir, "HCHS_income_nativity_gender_age_wrpc_results.RData"))
+# res_wrpc <- res
+subgroup_labels <-
+  c("Low-Inc, Non-US, M, Young", "Low-Inc, Non-US, M, Old",
+    "Low-Inc, Non-US, F, Young", "Low-Inc, Non-US, F, Old",
+    "Low-Inc, US, M, Young", "Low-Inc, US, M, Old",
+    "Low-Inc, US, F, Young", "Low-Inc, US, F, Old",
+    "High-Inc, Non-US, M, Young", "High-Inc, Non-US, M, Old",
+    "High-Inc, Non-US, F, Young", "High-Inc, Non-US, F, Old",
+    "High-Inc, US, M, Young", "High-Inc, US, M, Old",
+    "High-Inc, US, F, Young", "High-Inc, US, F, Old")
 
 # Source plotting functions
 source(paste0(wd, code_dir, "wrpc_plotting_fns.R"))
 # Define labels
 item_labels <- colnames(fpq_49categ[, -c(1:3)])
+item_labels <- c("Citrus Juice", "Non-Citrus Fruit Juice", "Applesauce", 
+                 "Citrus Fruits", "Non-Citrus Fruits", "Avocado", "Plantain", 
+                 "Dark Green Vegs", "Deep Yellow Vegs", "Tomato", "White Potato", 
+                 "Fried Potato", "Oth Starchy Vegs", "Legumes", "Other Vegs", 
+                 "Whole Grains", "Refined Grains", "Corn Breads", "Refined Breads",
+                 "Other Breads", "Pizza", "Savory Snacks", "Sweet Baked Goods", 
+                 "Beef", "Pork", "Poultry", "Cold Cuts", "Sausages/Cured Meats", 
+                 "Fish", "Eggs", "Nuts/Seeds", "Milk", "Cheese", "Yogurt", 
+                 "Cream", "Non-Dairy Creamer", "Dairy Dessert", "Oil", 
+                 "Sugar Sweetener", "Artificial Sweetener", "Candy", 
+                 "Sugar-Sweetened Bevs", "Diet Bevs", "Meal Replacement Bevs", 
+                 "Tea", "Coffee", "Beer", "Wine", "Other Soups")
 categ_labels <- c("None", "Monthly", "Weekly", "Daily", "Daily+")
 plot_wrpc_global_pattern_profiles(res = res_wrpc, 
                                   item_labels = item_labels, item_title = "Item",
                                   categ_labels = categ_labels) + 
   theme(legend.text = element_text(size = 10),
-        legend.title = element_text(size = 10))
+        legend.title = element_text(size = 10)) 
+  # guides(fill = guide_legend(title = "Consumption\nLevel"))
+# ggsave(filename = paste0(wd, "Tables_Figures/", "wrpc_ses_global_profiles.png"),
+#        width = 5400, height = 7200, units = "px", dpi = 700)
 plot_wrpc_global_pattern_probs(res = res_wrpc, item_labels = item_labels, 
                           categ_labels = categ_labels,
                           num_rows = 7) 
+# ggsave(filename = paste0(wd, "Tables_Figures/", "wrpc_ses_global_probs.png"),
+#        width = 8200, height = 6700, units = "px", dpi = 700)
 par(mfrow = c(1,1), mar = c(5.1, 4.1, 4.1, 2.1))
 plot(res_wrpc$post_MCMC_out$dendrogram_global)
 # Average posterior probability
@@ -624,23 +656,42 @@ plot_wrpc_local_pattern_profiles(res = res_wrpc,
                                  subgroup_labels = subgroup_labels,
                                  subgroup_title = "Subgroup") + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+# ggsave(filename = paste0(wd, "Tables_Figures/", "wrpc_ses_local_profiles.png"),
+#        width = 6700, height = 8200, units = "px", dpi = 700)
 plot_wrpc_allocation(res = res_wrpc, item_labels = item_labels, 
                      item_title = "Item",
                      subgroup_labels = subgroup_labels, 
                      subgroup_title = "Subgroup") + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+# ggsave(filename = paste0(wd, "Tables_Figures/", "wrpc_ses_alloc.png"),
+#        width = 6700, height = 8200, units = "px", dpi = 700)
 plot_wrpc_local_profiles_allocation(res = res_wrpc, 
                                     item_labels = item_labels, item_title = "Item",
                                     categ_labels = categ_labels,
                                     subgroup_labels = subgroup_labels,
                                     subgroup_title = "Subgroup") + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+# ggsave(filename = paste0(wd, "Tables_Figures/", "wrpc_ses_local_alloc.png"),
+#        width = 6700, height = 8200, units = "px", dpi = 700)
 # Proportion of each subpopulation following each global pattern
+plot_wrpc_class_subgroup_dist(res = res_wrpc, weights = TRUE, 
+                              subgroup_labels = subgroup_labels, 
+                              subgroup_title = "Subgroup", normalize = TRUE) + 
+  scale_fill_manual(values = c("#D55E00", "#009E73", "#E69F00", "#56B4E9")) + 
+  guides(fill = guide_legend(title = "Dietary Pattern")) + 
+  theme(legend.position = "top")
+ggsave(filename = paste0(wd, "Tables_Figures/", "wrpc_ses_class_subgroup_dist.png"),
+       width = 4700, height = 4200, units = "px", dpi = 700)
+# Sample version
 table(res_wrpc$estimates$c_all, res_wrpc$data_vars$h_all)
 plot_wrpc_class_subgroup_dist(res = res_wrpc, subgroup_labels = subgroup_labels, 
-                         subgroup_title = "Subgroup", normalize = TRUE)
+                              subgroup_title = "Subgroup", normalize = TRUE) + 
+  scale_fill_manual(values = c("#D55E00", "#009E73", "#E69F00", "#56B4E9")) + 
+  guides(fill = guide_legend(title = "Dietary Pattern")) + 
+  theme(legend.position = "top")
 plot_wrpc_class_subgroup_dist(res = res_wrpc, subgroup_labels = subgroup_labels, 
                          subgroup_title = "Subgroup", normalize = FALSE)
+
 
 ## plot trace of pi
 K <- res_wrpc$estimates$K_red
@@ -689,3 +740,62 @@ for (r in 1:5) {
        ylim = c(0,1), xlab = "", ylab = "")
 }
 
+
+### Survey design
+svy_data <- data.frame(sampling_wt = res_wrpc$data_vars$sampling_wt,
+                       subgroup = as.factor(res_wrpc$data_vars$h_all),
+                       class = as.factor(res_wrpc$estimates$c_all))
+svy_design_wts_only <- survey::svydesign(id = ~1, 
+                                         weights = ~sampling_wt, 
+                                         data = svy_data)
+# totals
+subgroup_total <- as.data.frame(survey::svytotal(~subgroup, 
+                                                 design = svy_design_wts_only, 
+                                                 na.rm = TRUE))
+# Equivalent with manual calculation
+subgroups_wtd <- as.data.frame(matrix(NA, ncol = 2, nrow = res_wrpc$data_vars$H))
+rownames(subgroups_wtd) <- subgroup_labels
+colnames(subgroups_wtd) <- c("Sample", "Population")
+subgroups_wtd[, 1] <- table(study_data$subgroup_income_nativity_gender_age)
+subgroups_wtd[, 2] <- sapply(1:res_wrpc$data_vars$H, function(h)
+  sum(res_wrpc$data_vars$sampling_wt[res_wrpc$data_vars$h_all == h]))
+
+subgroups_wtd %>% 
+  kbl(digits = 2, booktabs = TRUE, format = "latex",
+      caption = "Subpopulation sample sizes and estimated population sizes.") %>%
+  kable_classic() %>%
+  kable_styling(full_width = FALSE)
+
+#======= Old Code
+
+# ### Survey design
+# svy_data <- data.frame(study_data_dropna, class = res_wrpc$estimates$c_all)
+# svy_data <- svy_data %>% 
+#   mutate(subgroup = as.factor(subgroup_income_nativity_gender_age),
+#          class = as.factor(class))
+# 
+# svy_design_wts_only <- survey::svydesign(id = ~1, 
+#                                          weights = ~WEIGHT_FINAL_EXPANDED, 
+#                                          data = svy_data)
+# 
+# temp <- as.data.frame(survey::svyby(~class, ~subgroup, svy_design_wts_only, 
+#                                     svymean, na.rm = TRUE))
+# row_props <- temp %>% select(class1:class4)
+# knitr::kable(row_props, digits = 3, booktabs = TRUE)
+# rowSums(row_props)
+# 
+# svy_design <- survey::svydesign(id = ~PSU_ID, 
+#                                 weights = ~WEIGHT_FINAL_EXPANDED, 
+#                                 strata = ~STRAT, data = svy_data)
+# temp2 <- as.data.frame(survey::svyby(~class, ~subgroup, svy_design, 
+#                                      svymean, na.rm = TRUE))
+# sum(res_wrpc$data_vars$sampling_wt)
+# 
+# subgroups_wtd <- as.data.frame(matrix(NA, ncol = 2, nrow = res_wrpc$data_vars$H))
+# rownames(subgroups_wtd) <- subgroup_labels
+# colnames(subgroups_wtd) <- c("Sample", "Population")
+# subgroups_wtd[, 1] <- table(study_data$subgroup_income_nativity_gender_age)
+# subgroups_wtd[, 2] <- sapply(1:res_wrpc$data_vars$H, function(h) 
+#   sum(res_wrpc$data_vars$sampling_wt[res_wrpc$data_vars$h_all == h]))
+# 
+# table(res$estimates$c_all, res$data_vars$h_all)
